@@ -150,6 +150,8 @@ def register_region_tools(mcp: FastMCP) -> None:
             Field(
                 min_length=1,
                 max_length=100,
+                # No control/zero-width/bidi code points: UCSC redirects such queries away.
+                pattern=r"^[^\x00-\x1f\x7f-\x9f\u200b-\u200d\u2060\u202a-\u202e\u2066-\u2069\ufeff]+$",
                 description="Gene symbol, transcript accession or term, e.g. BRCA1, SHH, "
                 "NM_007294.4, ENST00000357654.9.",
                 examples=["BRCA1"],

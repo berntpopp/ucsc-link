@@ -95,6 +95,7 @@ class UcscClient:
             event_hooks={"request": [guard]},
         )
         self._cache: OrderedDict[str, tuple[float, dict[str, Any]]] = OrderedDict()
+        self._inflight: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self.upstream_requests = 0
         self.cache_hits = 0
 
@@ -122,9 +123,17 @@ class UcscClient:
         cached = self._cache_get(key)
         if cached is not None:
             return cached
-        data = await self._fetch(path, params)
-        self._cache_put(key, data)
-        return data
+        # Single-flight: parallel identical calls share one upstream request (politeness).
+        task = self._inflight.get(key)
+        if task is None:
+            task = self._inflight[key] = asyncio.ensure_future(self._fetch(path, params))
+            task.add_done_callback(lambda done: self._settle(key, done))
+        return await asyncio.shield(task)
+
+    def _settle(self, key: str, task: asyncio.Future[dict[str, Any]]) -> None:
+        self._inflight.pop(key, None)
+        if not task.cancelled() and task.exception() is None:
+            self._cache_put(key, task.result())
 
     async def _fetch(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         attempts = self.settings.max_retries + 1
