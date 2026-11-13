@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-13
+
+### Added
+
+- `search_genome` ranks exact symbol/accession hits first and reports `exact_matches`;
+  UCSC's looser text matches follow. Default `limit` is now 5 (was 10).
+- Transcript records (`knownGene`, `ncbiRefSeqSelect`) gain `exons`, numbered in transcript
+  order (minus-strand aware); native `exonStarts`/`exonEnds` are kept.
+- `genomicSuperDups` records gain `other_position` (partner copy, with 1-based `display`).
+- An oversized-window error offers the first allowed slice in `_meta.next_commands`.
+
+### Fixed
+
+- Parallel identical calls share one upstream request (single-flight cache), so cold
+  parallel calls no longer spend extra UCSC rate-limit slots.
+- A `search_genome` query containing control/zero-width/bidi characters is now
+  `invalid_input` (field `query`) instead of a misleading `upstream_unavailable`.
+- Conformance workflow waits for `/mcp` readiness (fleet template).
+
 ## [0.1.0] - 2026-11-13
 
 ### Added
