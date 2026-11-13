@@ -3,9 +3,9 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-# genefoundry-router v0.10.15. Both container-ci.yml and container-release.yml load
+# genefoundry-router v0.10.17. Both container-ci.yml and container-release.yml load
 # ReleaseConfig from their pinned commit, so both must track the same revision.
-ROUTER_SHA = "9ab6f5316954c5347be473e05abc620012026c66"
+ROUTER_SHA = "2cd86e35373cc7b1bdd8686ed9c69ca584b00ed9"
 SETUP_UV_SHA = "68559e99cc807c1eb7e9238fd43a15bba460eec2"
 CODEQL_SHA = "33d7b85da1a04171e211befe2c739303b9a4c066"
 
