@@ -5,9 +5,8 @@
 cff-version: 1.2.0
 message: If you use this software, please cite it as below.
 title: ucsc-link
-abstract: 'MCP server for the UCSC Genome Browser: curated region tracks (GENCODE/RefSeq transcripts,
-  RepeatMasker, segmental duplications, phyloP conservation, ENCODE cCREs, SpliceVarDB, Varaico) and
-  bounded reference sequence for hg38 and hg19, via the official UCSC JSON API.'
+abstract: 'MCP server for the UCSC Genome Browser: curated hg38/hg19 region tracks (genes, repeats, segmental
+  duplications, phyloP conservation, ENCODE cCREs, splicing variants) and bounded reference sequence.'
 type: software
 authors:
 - family-names: Popp
