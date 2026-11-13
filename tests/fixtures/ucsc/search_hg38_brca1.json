@@ -1,0 +1,122 @@
+{
+ "downloadTime": "2026:11:13T08:51:51Z",
+ "downloadTimeStamp": 1794559911,
+ "genome": "hg38",
+ "positionMatches": [
+  {
+   "name": "mane",
+   "trackName": "mane",
+   "description": "MANE Select Plus Clinical: Representative transcript from RefSeq & GENCODE",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr17:43044295-43125364",
+     "hgFindMatches": "ENST00000357654.9",
+     "posName": "BRCA1 (NM_007294.4 &#x2F; ENST00000357654.9)",
+     "highlight": null,
+     "canonical": false,
+     "description": "breast cancer type 1 susceptibility protein isoform 1"
+    }
+   ]
+  },
+  {
+   "name": "knownGene",
+   "trackName": "knownGene",
+   "description": "Gencode Genes",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr17:43044295-43125364",
+     "hgFindMatches": "ENST00000357654.9",
+     "posName": "BRCA1 (ENST00000357654.9)",
+     "highlight": null,
+     "canonical": true,
+     "description": "BRCA1 ENST00000357654.9 BRCA1 DNA repair associated transcript variant 1 from "
+    },
+    {
+     "position": "chr2:214725646-214809683",
+     "hgFindMatches": "ENST00000260947.9",
+     "posName": "BARD1 (ENST00000260947.9)",
+     "highlight": null,
+     "canonical": true,
+     "description": "BARD1 ENST00000260947.9 BRCA1 associated RING domain 1 transcript variant 8 from RefSeq "
+    },
+    {
+     "position": "chr3:52401008-52410008",
+     "hgFindMatches": "ENST00000460680.6",
+     "posName": "BAP1 (ENST00000460680.6)",
+     "highlight": null,
+     "canonical": true,
+     "description": "BAP1 ENST00000460680.6 BRCA1 associated deubiquitinase 1 transcript variant 1 from RefSeq NM_004656.4 "
+    }
+   ]
+  },
+  {
+   "name": "ncbiRefSeqCurated",
+   "trackName": "ncbiRefSeqCurated",
+   "description": "NCBI RefSeq genes, curated subset (NM_*, NR_*, NP_* or YP_*)",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr17:43044295-43125364",
+     "extraSel": "ncbiRefSeqCurated_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "NM_001407934.1",
+     "posName": "NM_001407934.1",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:43044295-43125364",
+     "extraSel": "ncbiRefSeqCurated_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "NM_001408513.1",
+     "posName": "NM_001408513.1",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:43044295-43125364",
+     "extraSel": "ncbiRefSeqCurated_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "NM_001407726.1",
+     "posName": "NM_001407726.1",
+     "highlight": null,
+     "canonical": false
+    }
+   ]
+  },
+  {
+   "name": "ncbiRefSeqCurated",
+   "trackName": "ncbiRefSeqCurated",
+   "description": "NCBI RefSeq genes, curated subset (NM_*, NR_*, NP_* or YP_*)",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr2:214725646-214809683",
+     "extraSel": "ncbiRefSeqCurated_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "NM_000465.4",
+     "posName": "BRCA1 associated RING domain 1, transcript variant 1",
+     "highlight": null,
+     "canonical": false,
+     "description": "(NM_000465.4)"
+    },
+    {
+     "position": "chrX:155071508-155123077",
+     "extraSel": "ncbiRefSeqCurated_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "NM_001018055.3",
+     "posName": "BRCA1&#x2F;BRCA2-containing complex subunit 3, transcript variant 2",
+     "highlight": null,
+     "canonical": false,
+     "description": "(NM_001018055.3)"
+    },
+    {
+     "position": "chr19:17267443-17279337",
+     "extraSel": "ncbiRefSeqCurated_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "NM_001033549.3",
+     "posName": "BRISC and BRCA1 A complex member 1, transcript variant 1",
+     "highlight": null,
+     "canonical": false,
+     "description": "(NM_001033549.3)"
+    }
+   ]
+  }
+ ]
+}

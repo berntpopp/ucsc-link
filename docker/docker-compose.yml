@@ -1,0 +1,54 @@
+name: ucsc-link
+
+services:
+  ucsc-link:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+      args:
+        APP_VERSION: ${UCSC_LINK_APP_VERSION:-0.0.0}
+        VCS_REF: ${UCSC_LINK_VCS_REF:-local}
+        BUILD_DATE: ${UCSC_LINK_BUILD_DATE:-1970-01-01T00:00:00Z}
+    container_name: ucsc-link
+    # Dev/local only — loopback-bound (127.0.0.1) so copying this file to a
+    # server never publishes the unauthenticated backend on the public IP
+    # (Docker would otherwise bind 0.0.0.0 and bypass the host firewall).
+    # Production fronts the container with a reverse proxy via the prod/npm
+    # overlays (ports: !reset []). Backends are unauthenticated by design.
+    ports:
+      - "127.0.0.1:${UCSC_LINK_HOST_PORT:-8000}:8000"
+    env_file:
+      - path: ../.env
+        required: false
+      - path: ../.env.docker
+        required: false
+    environment:
+      UCSC_LINK_TRANSPORT: unified
+      UCSC_LINK_HOST: 0.0.0.0
+      # Explicit opt-in for the F-04 bind guard: the container binds 0.0.0.0 but
+      # is only published on loopback above (127.0.0.1:...), so this is safe.
+      UCSC_LINK_ALLOW_PUBLIC_BIND: "true"
+      UCSC_LINK_PORT: "8000"
+      UCSC_LINK_MCP_PATH: /mcp
+      UCSC_LINK_ALLOWED_HOSTS: '["localhost","127.0.0.1","::1"]'
+      UCSC_LINK_LOG_LEVEL: INFO
+      UCSC_LINK_LOG_FORMAT: json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ucsc-network
+
+networks:
+  ucsc-network:
+    driver: bridge

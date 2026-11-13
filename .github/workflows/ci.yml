@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Format, lint, typecheck, tests, and coverage (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Single fleet interpreter: the one the container ships (docker/Dockerfile).
+        python-version: ["3.14"]
+
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          version: "0.8.7"
+
+      - name: Install dependencies
+        run: uv sync --group dev --frozen
+
+      # Static checks + a single parallel test run (xdist). Fast feedback on every PR.
+      - name: Run CI checks (format, lint, typecheck, tests)
+        run: make ci-local
+
+      # Coverage gate runs only on push to main to avoid a second full test run on
+      # every PR iteration (concurrency-cancel + this split are the compute savers).
+      - name: Coverage gate
+        if: github.event_name == 'push'
+        run: make test-cov

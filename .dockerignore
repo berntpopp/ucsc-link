@@ -1,0 +1,86 @@
+# Keep the public application image code-only and the build context bounded.
+
+# Version control and CI metadata
+.git/
+.git
+.gitignore
+.gitattributes
+.github/
+
+# Runtime secrets and local environments
+.env
+.env.*
+!.env.example
+!.env.docker.example
+.venv/
+venv/
+env/
+ENV/
+
+# Python caches, build output, and test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Documentation and development-only helpers
+docs/
+scripts/
+tests/
+dev/
+.pre-commit-config.yaml
+
+# Docker Compose files are deployment inputs, not image content.
+docker/docker-compose*.yml
+docker/README.md
+.dockerignore
+
+# Authoritative data, runtime state, and bulky biomedical artifacts
+data/
+datasets/
+corpus/
+output/
+outputs/
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.parquet
+*.vcf
+*.vcf.gz
+*.bcf
+*.obo
+*.owl
+*.zst
+
+# Logs, temporary files, editor state, and OS metadata
+*.log
+logs/
+*.tmp
+*.temp
+tmp/
+temp/
+.superpowers/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

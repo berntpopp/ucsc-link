@@ -1,0 +1,35 @@
+# CITATION.cff — GENERATED. Do not edit.
+# Source: genefoundry-router/fleet-metadata.yaml + this repo's pyproject.toml.
+# Regenerate: `make citation-write` in genefoundry-router.
+# See genefoundry-router/docs/REPO-METADATA-STANDARD-v1.md.
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: ucsc-link
+abstract: 'MCP server for the UCSC Genome Browser: curated region tracks (GENCODE/RefSeq transcripts,
+  RepeatMasker, segmental duplications, phyloP conservation, ENCODE cCREs, SpliceVarDB, Varaico) and
+  bounded reference sequence for hg38 and hg19, via the official UCSC JSON API.'
+type: software
+authors:
+- family-names: Popp
+  given-names: Bernt
+  email: bernt.popp@charite.de
+  affiliation: Charité – Universitätsmedizin Berlin
+version: 0.1.0
+license: MIT
+repository-code: https://github.com/berntpopp/ucsc-link
+url: https://genefoundry.org
+keywords:
+- bioinformatics
+- claude
+- encode
+- fastmcp
+- genefoundry
+- genome-browser
+- genomics
+- llm-tools
+- mcp
+- mcp-server
+- model-context-protocol
+- ucsc-genome-browser
+- variant-annotation
+date-released: '2026-11-13'

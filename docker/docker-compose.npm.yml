@@ -1,0 +1,79 @@
+# Nginx Proxy Manager deployment overlay for ucsc-link.
+#
+# Self-contained (used standalone, not layered on docker-compose.yml): one
+# unified container serves the FastAPI REST API on / and the MCP streamable-HTTP
+# transport on /mcp via a single port (8000). NPM reverse-proxies to the fixed
+# container_name on the shared external npm_default network. Mirrors the
+# gtex-link / mgi-link fleet pattern.
+#
+#   docker compose -f docker/docker-compose.npm.yml --env-file .env.docker up -d
+name: ucsc-link-npm
+
+services:
+  ucsc_link:
+    # Deploy pulls the released, attested image; it never builds from source.
+    # Pin a digest, not a tag: there is no `latest`, and only a digest is immutable.
+    image: ${UCSC_LINK_IMAGE:?Set UCSC_LINK_IMAGE to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}
+    pull_policy: missing
+    container_name: ucsc-link-npm
+    # NO published host ports — NPM handles all routing via the container name.
+    expose:
+      - "8000"
+    environment:
+      - UCSC_LINK_TRANSPORT=unified
+      - UCSC_LINK_HOST=0.0.0.0
+      - UCSC_LINK_PORT=8000
+      - UCSC_LINK_MCP_PATH=/mcp
+      - 'UCSC_LINK_ALLOWED_HOSTS=["localhost","127.0.0.1","::1","ucsc-link.genefoundry.org"]'
+      - 'UCSC_LINK_ALLOWED_ORIGINS=["https://ucsc-link.genefoundry.org"]'
+      - 'UCSC_LINK_CORS_ORIGINS=["https://ucsc-link.genefoundry.org"]'
+      - UCSC_LINK_LOG_LEVEL=${LOG_LEVEL_API:-INFO}
+      - UCSC_LINK_LOG_FORMAT=json
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    read_only: true
+    # GeneFoundry deploy contract: the fleet controller (strato_v6_docker_npm,
+    # scripts/utils/deployment_preflight.py) accepts a declared user only as numeric
+    # non-root, and its runtime observer proves the effective uid from /proc.
+    # This is THIS image's own uid:gid (docker/Dockerfile) -- sibling -link images differ.
+    user: "10001:10001"
+    tmpfs:
+      # Scratch space for Python / uvicorn runtime temporaries.
+      - /tmp/ucsc-link:rw,noexec,nosuid,size=64m,mode=1777
+    networks:
+      - ucsc_link_internal_net
+      - npm_proxy_network
+    deploy:
+      resources:
+        limits:
+          memory: ${UCSC_API_MEMORY_LIMIT:-512m}
+          cpus: ${UCSC_API_CPU_LIMIT:-1.0}
+          pids: 256
+        reservations:
+          memory: 128m
+          cpus: 0.25
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=ucsc-link,environment=production,proxy=npm"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    init: true
+
+networks:
+  ucsc_link_internal_net:
+    driver: bridge
+    name: ucsc_link_internal_net
+  npm_proxy_network:
+    external: true
+    name: ${NPM_SHARED_NETWORK_NAME:-npm_default}

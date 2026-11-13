@@ -1,0 +1,71 @@
+# Production docker-compose override (Container & Deployment Hardening Standard v1).
+# Layered on the base file:
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+#
+# Front the container with a reverse proxy (TLS at the edge); see
+# docker-compose.npm.yml for the Nginx Proxy Manager expose-only overlay.
+
+services:
+  ucsc-link:
+    build: !reset null
+    image: ${UCSC_LINK_IMAGE:?set a verified digest-addressed image}
+    pull_policy: missing
+    container_name: !reset null
+    env_file: !reset []
+    environment:
+      UCSC_LINK_TRANSPORT: unified
+      UCSC_LINK_LOG_LEVEL: INFO
+      UCSC_LINK_LOG_FORMAT: json
+      UCSC_LINK_ALLOWED_HOSTS: '["localhost","127.0.0.1","::1","ucsc-link.genefoundry.org"]'
+      UCSC_LINK_ALLOWED_ORIGINS: '["https://ucsc-link.genefoundry.org"]'
+      UCSC_LINK_CORS_ORIGINS: '["https://ucsc-link.genefoundry.org"]'
+      GF_HEALTHCHECK_HOST: localhost
+
+    # No published host ports in production; reach the container via the proxy only.
+    # !reset (not []) is required: Compose MERGES list fields across -f overlays,
+    # so a plain `ports: []` would NOT drop the base file's host mapping.
+    ports: !reset []
+    expose:
+      - "8000"
+
+    # Read-only root filesystem; the only writable path is an ephemeral tmpfs
+    # (responses are cached in-process only).
+    read_only: true
+    tmpfs: !override
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+
+    security_opt: !override
+      - no-new-privileges:true
+    cap_drop: !override
+      - ALL
+
+    init: true
+
+    deploy: !override
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+          pids: 256
+    restart: unless-stopped
+
+    healthcheck:
+      test:
+        - CMD
+        - sh
+        - -c
+        - 'curl -f -H "Host: $${GF_HEALTHCHECK_HOST}" http://localhost:8000/health'
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=ucsc-link,environment=production"
+    networks: !reset null
+
+networks: !reset null

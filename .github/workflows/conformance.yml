@@ -1,0 +1,52 @@
+name: mcp-conformance
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+
+env:
+  UV_PYTHON: "3.14"  # pin: uv would otherwise pick the runner's newest interpreter (3.15)
+concurrency:
+  group: conformance-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CONFORMANCE_NAME: ucsc-link      # serverInfo.name
+      CONFORMANCE_TIER: stateless
+      MCP_PORT: "8000"                    # docker-compose host port (UCSC_LINK_HOST_PORT default)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - run: uv sync --group dev
+      - name: Build & start server
+        run: make docker-build && make docker-up
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS "http://127.0.0.1:${MCP_PORT}/health" && break || sleep 2
+          done
+      - name: Run conformance probe
+        env:
+          CONFORMANCE_MCP_URL: http://127.0.0.1:${{ env.MCP_PORT }}
+        run: uv run pytest tests/conformance/test_transport_v1.py -v
+      - name: Run behaviour probe
+        # Behaviour Conformance v1 — the recurring contract bugs (silent-empty filter,
+        # lying total/truncated, an error an LLM cannot act on, missing isError, off-enum
+        # error_code). Every probe is derived from this server's own advertised schema;
+        # there is no per-repo probe list to maintain.
+        env:
+          CONFORMANCE_MCP_URL: http://127.0.0.1:${{ env.MCP_PORT }}
+        run: uv run pytest tests/conformance/test_behaviour_v1.py -v
+      - name: Logs on failure
+        # NB: NON-following logs. `make docker-logs` typically follows (docker compose
+        # logs -f) and would hang this step until the job timeout on a real failure.
+        if: failure()
+        run: docker compose -f docker/docker-compose.yml logs --no-color --tail=200 || true
+      - name: Teardown
+        if: always()
+        run: make docker-down || true
