@@ -66,10 +66,10 @@ BLAT_CITATION = (
 
 _HEADER = re.compile(r"^>[^\n]*\n")
 _WHITESPACE = re.compile(r"\s+")
-_DNA = re.compile(r"^[ACGTN]+$")
-_PRIMER = re.compile(rf"^[ACGTacgt]{{{MIN_PRIMER_BP},{MAX_PRIMER_BP}}}$")
-_PCR_HEADER = re.compile(r"^>(\S+):(\d+)([+-])(\d+) (\d+)bp ([ACGTacgt]+) ([ACGTacgt]+)$")
-_CHROM = re.compile(r"^[A-Za-z0-9_.]{1,64}$")
+_DNA = re.compile(r"[ACGTN]+")
+_PRIMER = re.compile(rf"[ACGTacgt]{{{MIN_PRIMER_BP},{MAX_PRIMER_BP}}}")
+_PCR_HEADER = re.compile(r">(\S+):(\d+)([+-])(\d+) (\d+)bp ([ACGTacgt]+) ([ACGTacgt]+)")
+_CHROM = re.compile(r"[A-Za-z0-9_.]{1,64}")
 _COMPLEMENT = str.maketrans("ACGTacgt", "TGCAtgca")
 #: hg38 alternate haplotypes / patches repeat primary-assembly loci (same gene, other copy).
 _ALT_SUFFIXES = ("_alt", "_fix")
@@ -93,7 +93,7 @@ def clean_sequence(raw: str) -> str:
         raise InvalidInputError(
             "Give exactly one sequence; multi-record FASTA is not supported.", field="sequence"
         )
-    if not _DNA.match(bases):
+    if not _DNA.fullmatch(bases):
         raise InvalidInputError(
             "sequence must be DNA: A, C, G, T or N only (other IUPAC codes and U are refused).",
             field="sequence",
@@ -109,7 +109,7 @@ def clean_sequence(raw: str) -> str:
 
 def clean_primer(raw: str, field: str) -> str:
     """A primer of 15-50 A/C/G/T bases (5'->3'), uppercased."""
-    if not _PRIMER.match(raw):
+    if not _PRIMER.fullmatch(raw):
         raise InvalidInputError(
             f"{field} must be {MIN_PRIMER_BP}-{MAX_PRIMER_BP} bases of A, C, G or T, 5'->3' "
             "(degenerate bases are not supported).",
@@ -130,7 +130,7 @@ def parse_psl(text: str) -> list[dict[str, Any]]:
             continue
         cols = line.split("\t")
         try:
-            if len(cols) != 21 or not _CHROM.match(cols[13]) or cols[8] not in ("+", "-"):
+            if len(cols) != 21 or not _CHROM.fullmatch(cols[13]) or cols[8] not in ("+", "-"):
                 raise ValueError
             match, mis, rep, n_count, q_ins, _, t_ins, _ = (int(c) for c in cols[:8])
             q_size, q_start, q_end = int(cols[10]), int(cols[11]), int(cols[12])
@@ -182,9 +182,9 @@ def parse_pcr_fasta(
     products: list[dict[str, Any]] = []
     for record in text.split(">")[1:]:
         header, _, body = record.partition("\n")
-        found = _PCR_HEADER.match(">" + header.strip())
+        found = _PCR_HEADER.fullmatch(">" + header.strip())
         sequence = _WHITESPACE.sub("", body)
-        if found is None or not _CHROM.match(found.group(1)):
+        if found is None or not _CHROM.fullmatch(found.group(1)):
             raise UpstreamSchemaError("gfPcr output was not valid FASTA.", field="products")
         chrom, first, strand, last = found.group(1, 2, 3, 4)
         start, end, size = int(first) - 1, int(last), int(found.group(5))
@@ -375,13 +375,20 @@ class BlatService:
             data = exe.is_file() and (seq_dir / f"{db}.2bit").is_file()
             ready = False
             if data:
-                proc = await asyncio.create_subprocess_exec(
-                    str(exe), "status", host, port, stdin=DEVNULL, stdout=DEVNULL, stderr=DEVNULL
-                )
-                try:
-                    ready = await asyncio.wait_for(proc.wait(), 5) == 0
-                except TimeoutError:
-                    proc.kill()
-                    await proc.wait()
+                async with self._slots:  # diagnostics spam cannot fork unbounded probes
+                    proc = await asyncio.create_subprocess_exec(
+                        str(exe),
+                        "status",
+                        host,
+                        port,
+                        stdin=DEVNULL,
+                        stdout=DEVNULL,
+                        stderr=DEVNULL,
+                    )
+                    try:
+                        ready = await asyncio.wait_for(proc.wait(), 5) == 0
+                    except TimeoutError:
+                        proc.kill()
+                        await proc.wait()
             report[db] = {"data_on_disk": data, "server_ready": ready, "available": ready}
         return report

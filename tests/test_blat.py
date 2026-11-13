@@ -123,7 +123,8 @@ def test_sequence_allows_n() -> None:
 
 
 @pytest.mark.parametrize(
-    "raw", ["ACGT" * 3, "A" * 51, "ACGTNACGTNACGTNACGTN", "-ACGTACGTACGTACGTA"]
+    "raw",
+    ["ACGT" * 3, "A" * 51, "ACGTNACGTNACGTNACGTN", "-ACGTACGTACGTACGTA", "ACGTACGTACGTACGTA\n"],
 )
 def test_primer_outside_the_contract_is_invalid_input(raw: str) -> None:
     with pytest.raises(InvalidInputError) as info:
