@@ -122,7 +122,9 @@ def test_sequence_allows_n() -> None:
     assert clean_sequence("N" * 5 + BRCA1_100[:20]) == "NNNNN" + BRCA1_100[:20]
 
 
-@pytest.mark.parametrize("raw", ["ACGT" * 3, "A" * 51, "ACGTNACGTNACGTNACGTN", "-ACGTACGTACGTACGTA"])
+@pytest.mark.parametrize(
+    "raw", ["ACGT" * 3, "A" * 51, "ACGTNACGTNACGTNACGTN", "-ACGTACGTACGTACGTA"]
+)
 def test_primer_outside_the_contract_is_invalid_input(raw: str) -> None:
     with pytest.raises(InvalidInputError) as info:
         clean_primer(raw, "forward_primer")

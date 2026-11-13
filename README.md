@@ -63,8 +63,10 @@ Use `unified` (the default) for MCP over HTTP; `--transport http` serves `/healt
 | `search_genome` | Gene/transcript → 0-based positions (MANE, HGNC, GENCODE, RefSeq) |
 | `get_region_annotations` | One track's records over `[start, end)`: native UCSC fields + a normalized `position` |
 | `get_reference_sequence` | Reference DNA for a window (≤ 10 kb), soft-masked, optional reverse complement |
+| `find_blat_alignments` | BLAT one DNA sequence (20–25,000 bp) → hits with UCSC score, identity, strand, blocks |
+| `predict_pcr_products` | In-silico PCR for a primer pair → products with location, size, primer mismatches |
 | `get_server_capabilities` | Discovery: tracks, coordinate convention, limits, rate-limit policy, error codes |
-| `get_diagnostics` | Local runtime state: request budget, cache hits, latency (no upstream call) |
+| `get_diagnostics` | Local runtime state: request budget, cache hits, latency, live BLAT availability |
 
 Leaf names are **unprefixed** per Tool-Naming Standard v1. Behind `genefoundry-router` this
 server mounts under the namespace `ucsc`, so `get_region_annotations` surfaces as

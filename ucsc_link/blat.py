@@ -134,9 +134,7 @@ def parse_psl(text: str) -> list[dict[str, Any]]:
             q_size, q_start, q_end = int(cols[10]), int(cols[11]), int(cols[12])
             t_start, t_end = int(cols[15]), int(cols[16])
             sizes, t_starts = _ints(cols[18]), _ints(cols[20])
-            blocks = [
-                {"start": s, "end": s + n} for s, n in zip(t_starts, sizes, strict=True)
-            ]
+            blocks = [{"start": s, "end": s + n} for s, n in zip(t_starts, sizes, strict=True)]
         except ValueError:
             raise UpstreamSchemaError("gfClient output was not valid PSL.", field="psl") from None
         aligned = match + rep + mis
@@ -199,7 +197,10 @@ def parse_pcr_fasta(
                 "strand": strand,
                 "display": display(chrom, start, end),
                 "size": size,
-                "forward_primer": {"sequence": fwd, "mismatches": _mismatches(fwd, sequence[: len(fwd)])},
+                "forward_primer": {
+                    "sequence": fwd,
+                    "mismatches": _mismatches(fwd, sequence[: len(fwd)]),
+                },
                 "reverse_primer": {"sequence": rev, "mismatches": _mismatches(rev, rev_site)},
                 "sequence": sequence[:max_sequence_bp],
                 "sequence_truncated": size > max_sequence_bp,
@@ -271,9 +272,7 @@ class BlatService:
                     retryable=True,
                 ) from None
         if proc.returncode != 0:
-            logger.warning(
-                "kent client failed", extra={"rc": proc.returncode, "stderr": err[:300]}
-            )
+            logger.warning("kent client failed", extra={"rc": proc.returncode, "stderr": err[:300]})
             raise UpstreamUnavailableError(
                 "The BLAT server could not be reached or rejected the query (gfServer may "
                 "still be loading the genome); retry shortly or check get_diagnostics.",

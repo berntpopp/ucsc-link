@@ -88,6 +88,10 @@ PINS: dict[str, Pin] = {
 DEFAULT_NAMES = ("gfServer", "gfClient", "gfPcr", "hg38")
 
 
+def _say(line: str) -> None:
+    sys.stderr.write(line + "\n")  # CLI progress; stdout stays clean
+
+
 def _digests(path: Path) -> tuple[str, str]:
     sha, md5 = hashlib.sha256(), hashlib.md5(usedforsecurity=False)
     with path.open("rb") as handle:
@@ -140,11 +144,11 @@ def fetch(dest: Path, names: Sequence[str], *, pins: dict[str, Pin] = PINS) -> N
             target = dest / pin.path
             target.parent.mkdir(parents=True, exist_ok=True)
             if target.is_file() and _valid(target, pin) is None:
-                print(f"ok      {pin.path} (already verified)", file=sys.stderr)
+                _say(f"ok      {pin.path} (already verified)")
                 continue
-            print(f"fetch   {pin.url}", file=sys.stderr)
+            _say(f"fetch   {pin.url}")
             _download(client, pin, target)
-            print(f"ok      {pin.path} sha256={pin.sha256[:12]}...", file=sys.stderr)
+            _say(f"ok      {pin.path} sha256={pin.sha256[:12]}...")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -157,7 +161,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         fetch(args.dest, args.names)
     except (FetchError, OSError) as exc:
-        print(f"error   {exc}", file=sys.stderr)
+        _say(f"error   {exc}")
         return 1
     return 0
 

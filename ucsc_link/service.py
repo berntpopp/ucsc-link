@@ -16,6 +16,8 @@ from typing import Any
 from urllib.parse import unquote
 
 from ucsc_link.api.client import UcscClient
+from ucsc_link.blat import BlatService
+from ucsc_link.config import BlatSettings
 from ucsc_link.exceptions import InvalidInputError, NotFoundError, UpstreamSchemaError
 from ucsc_link.mcp.untrusted_content import DEFAULT_MAX_OBJECTS as MAX_UNTRUSTED_OBJECTS
 from ucsc_link.mcp.untrusted_content import fence_untrusted_text
@@ -150,9 +152,10 @@ def _signal_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
 class UcscService:
     """Allowlisted, bounded access to UCSC tracks, sequence and gene-position search."""
 
-    def __init__(self, client: UcscClient) -> None:
-        """Wrap a configured :class:`UcscClient`."""
+    def __init__(self, client: UcscClient, blat: BlatService | None = None) -> None:
+        """Wrap a configured :class:`UcscClient` (and the BLAT backend, default: none)."""
         self.client = client
+        self.blat = blat or BlatService(BlatSettings())
 
     async def chromosomes(self, assembly: Assembly) -> dict[str, int]:
         """Chromosome name -> size for the assembly (cached by the client)."""

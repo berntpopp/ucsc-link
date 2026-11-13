@@ -9,7 +9,21 @@ from typing import Any
 from fastmcp import FastMCP
 
 from ucsc_link import __version__
+from ucsc_link.blat import (
+    BLAT_CITATION,
+    DEFAULT_MAX_PRODUCT_BP,
+    KENT_LICENCE,
+    MAX_BLAT_BP,
+    MAX_BLAT_LIMIT,
+    MAX_PCR_LIMIT,
+    MAX_PRIMER_BP,
+    MAX_PRODUCT_BP,
+    MAX_PRODUCT_SEQUENCE_BP,
+    MIN_BLAT_BP,
+    MIN_PRIMER_BP,
+)
 from ucsc_link.buildinfo import build_info
+from ucsc_link.config import settings
 from ucsc_link.mcp.resources import RATE_LIMIT_POLICY, RESEARCH_USE_NOTICE
 from ucsc_link.service import SEARCH_TRACKS, track_summary
 from ucsc_link.tracks import (
@@ -45,6 +59,8 @@ TOOLS: list[str] = [
     "search_genome",
     "get_region_annotations",
     "get_reference_sequence",
+    "find_blat_alignments",
+    "predict_pcr_products",
 ]
 
 _HASH_EXCLUDE = frozenset({"build", "capabilities_version"})
@@ -78,6 +94,26 @@ def build_capabilities() -> dict[str, Any]:
             "max_search_limit": MAX_SEARCH_LIMIT,
             "max_response_chars": MAX_RESPONSE_CHARS,
         },
+        "blat": {
+            "engine": "self-hosted UCSC Kent gfServer (one per assembly, -stepSize=5, serves "
+            "both BLAT and in-silico PCR); UCSC's hosted hgBlat/hgPcr are not used",
+            "configured_assemblies": sorted(settings.blat.servers),
+            "availability": "find_blat_alignments/predict_pcr_products work only for "
+            "configured_assemblies; live readiness is get_diagnostics -> blat",
+            "limits": {
+                "sequence_bp": [MIN_BLAT_BP, MAX_BLAT_BP],
+                "primer_bp": [MIN_PRIMER_BP, MAX_PRIMER_BP],
+                "default_max_product_bp": DEFAULT_MAX_PRODUCT_BP,
+                "max_product_bp": MAX_PRODUCT_BP,
+                "product_sequence_bp": MAX_PRODUCT_SEQUENCE_BP,
+                "max_blat_limit": MAX_BLAT_LIMIT,
+                "max_pcr_limit": MAX_PCR_LIMIT,
+            },
+            "score": "UCSC web BLAT: score = matches + repMatches/2 - misMatches - "
+            "qNumInsert - tNumInsert; identity = 100 - pslCalcMilliBad(isMrna)/10",
+            "licence": KENT_LICENCE,
+            "citation": BLAT_CITATION,
+        },
         "rate_limit_policy": RATE_LIMIT_POLICY,
         "caching": "in-process only (TTL); no data snapshot is stored or redistributed",
         "terms_of_use": UCSC_TERMS_URL,
@@ -93,6 +129,8 @@ def build_capabilities() -> dict[str, Any]:
             "search_genome(assembly, query) -> get_region_annotations(assembly, chrom, "
             "start, end, track) -> get_reference_sequence(assembly, chrom, start, end)",
             "list_tracks(assembly) -> pick a track -> get_region_annotations",
+            "find_blat_alignments(sequence) or predict_pcr_products(forward_primer, "
+            "reverse_primer) -> get_region_annotations on the hit/product region",
         ],
     }
     blob = json.dumps({k: v for k, v in payload.items() if k not in _HASH_EXCLUDE}, sort_keys=True)

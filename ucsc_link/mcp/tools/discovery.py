@@ -49,14 +49,20 @@ def register_discovery_tools(mcp: FastMCP) -> None:
         tags={"discovery"},
         description=(
             "Report runtime state without calling UCSC: build, upstream request budget "
-            "(today's usage vs the daily cap), cache hits and tool latency metrics. "
+            "(today's usage vs the daily cap), cache hits, tool latency metrics and live "
+            "BLAT/isPcr availability per assembly (local gfServer status). "
             "Signature: get_diagnostics()."
         ),
     )
     async def get_diagnostics() -> ToolReturn:
         async def call() -> dict[str, Any]:
-            client = get_ucsc_service().client
+            service = get_ucsc_service()
+            client = service.client
             return {
+                "blat": {
+                    "configured_assemblies": service.blat.configured,
+                    "assemblies": await service.blat.status(),
+                },
                 "build": build_info(),
                 "upstream": {
                     "base_url": client.settings.base_url,

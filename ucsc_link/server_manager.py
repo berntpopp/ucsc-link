@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any
 import uvicorn
 
 from ucsc_link.api.client import UcscClient
+from ucsc_link.blat import BlatService
 from ucsc_link.config import check_bind_safety, settings
 from ucsc_link.mcp.facade import create_ucsc_mcp
 from ucsc_link.mcp.service_adapters import set_ucsc_service
@@ -47,7 +48,7 @@ class UnifiedServerManager:
     def _build_service(self) -> UcscService:
         """Construct the single live service and register it."""
         self._client = UcscClient(settings.ucsc)
-        service = UcscService(self._client)
+        service = UcscService(self._client, BlatService(settings.blat))
         set_ucsc_service(service)
         return service
 
