@@ -106,7 +106,8 @@ async def test_prose_fields_are_fenced_and_snippets_dropped(ucsc_service: UcscSe
     assert rec["title"]["kind"] == "untrusted_text"
     assert rec["title"]["provenance"]["source"] == "ucsc:varaico"
     assert len(rec["title"]["raw_sha256"]) == 64
-    assert "geneSnippets" not in rec and "variantSnippets" not in rec
+    for raw_mention in ("geneSnippets", "variantSnippets", "geneOrigStrs", "variantOrigStrs"):
+        assert raw_mention not in rec  # verbatim article text: dropped, the outlink has it
     assert out["track"]["attribution"]["non_commercial"] is True
 
 

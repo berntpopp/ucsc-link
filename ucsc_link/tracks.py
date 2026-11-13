@@ -155,6 +155,7 @@ TRACKS: dict[str, TrackSpec] = {
             "ENCODE Consortium via UCSC",
             OPEN_TERMS,
             note="Frozen ENCODE3 release kept for reproducibility; ENCODE4 is cCREregistry.",
+            drop_fields=("bin", "description"),  # templated "<accession> <label>" duplicate
         ),
         TrackSpec(
             "spliceVarDb",
@@ -184,7 +185,14 @@ TRACKS: dict[str, TrackSpec] = {
             citation="Varaico, https://varaico.com (literature-mined variants; cite the "
             "original publications in each record).",
             prose_fields=("author", "title", "journal"),
-            drop_fields=("bin", "geneSnippets", "variantSnippets"),
+            # Verbatim article snippets/mentions are dropped (the outlink has them).
+            drop_fields=(
+                "bin",
+                "geneSnippets",
+                "variantSnippets",
+                "geneOrigStrs",
+                "variantOrigStrs",
+            ),
         ),
     )
 }
