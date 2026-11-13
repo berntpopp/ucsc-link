@@ -61,9 +61,13 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
+# /opt/blat is the mount point of the BLAT volume (docker-compose.npm.yml): an empty,
+# app-owned directory so a fresh named volume inherits uid 10001. The Kent binaries and
+# .2bit genomes are fetched onto it at deploy time and never shipped in this image.
 RUN groupadd --gid 10001 app && \
     useradd --uid 10001 --gid app --home /home/app --create-home --shell /usr/sbin/nologin app && \
-    chown -R app:app /home/app
+    chown -R app:app /home/app && \
+    install -d -o app -g app -m 0755 /opt/blat
 
 COPY --from=builder /opt/venv /opt/venv
 
