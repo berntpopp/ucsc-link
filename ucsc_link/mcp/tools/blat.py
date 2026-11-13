@@ -174,7 +174,12 @@ def register_blat_tools(mcp: FastMCP) -> None:
             payload = await get_ucsc_service().blat.pcr(
                 assembly, forward_primer, reverse_primer, max_product_size, limit
             )
-            payload["_meta"] = {"next_commands": _annotate(payload["assembly"], payload["results"])}
+            steps = _annotate(payload["assembly"], payload["results"])
+            if not payload["results"] and max_product_size < MAX_PRODUCT_BP:
+                steps = [
+                    cmd("predict_pcr_products", **{**args, "max_product_size": MAX_PRODUCT_BP})
+                ]
+            payload["_meta"] = {"next_commands": steps}
             return payload
 
         return await run_mcp_tool(

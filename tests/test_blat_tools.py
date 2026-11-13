@@ -104,3 +104,18 @@ async def test_too_short_sequence_error_states_the_length_contract(facade: Any) 
     assert env["error_code"] == "invalid_input" and env["field"] == "sequence"
     assert "20" in env["message"] and "expects a string" not in env["message"]
     assert env["allowed_values"] == ["20..30000 characters"]
+
+
+async def test_empty_pcr_suggests_the_widest_product_size_not_diagnostics(
+    facade: Any, call_tool: Any, ucsc_service: UcscService, tmp_path: pathlib.Path
+) -> None:
+    ucsc_service.blat = BlatService(_layout(tmp_path, "exit 0", gf_pcr=': > "$7"'))
+    args = {"forward_primer": HTT_FWD, "reverse_primer": HTT_REV}
+    out = await call_tool(facade, "predict_pcr_products", args)
+    assert out["total"] == 0
+    assert out["_meta"]["next_commands"] == [
+        {
+            "tool": "predict_pcr_products",
+            "arguments": {**args, "assembly": "hg38", "max_product_size": 10000, "limit": 10},
+        }
+    ]
