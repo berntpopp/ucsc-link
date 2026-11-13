@@ -16,6 +16,8 @@ from typing import Any
 from urllib.parse import unquote
 
 from ucsc_link.api.client import UcscClient
+from ucsc_link.blat import BlatService
+from ucsc_link.config import BlatSettings
 from ucsc_link.exceptions import InvalidInputError, NotFoundError, UpstreamSchemaError
 from ucsc_link.mcp.untrusted_content import DEFAULT_MAX_OBJECTS as MAX_UNTRUSTED_OBJECTS
 from ucsc_link.mcp.untrusted_content import fence_untrusted_text
@@ -86,12 +88,20 @@ def _record_position(record: dict[str, Any], fallback_chrom: str) -> dict[str, A
     return None
 
 
+def _ints(value: Any) -> list[int]:
+    return [int(x) for x in str(value).split(",") if x]
+
+
 def _exons(record: dict[str, Any]) -> list[dict[str, int]] | None:
-    """genePred exonStarts/exonEnds strings as exons numbered in transcript order."""
+    """genePred exonStarts/exonEnds (or bigGenePred blocks) as exons in transcript order."""
     try:
-        starts = [int(x) for x in str(record["exonStarts"]).split(",") if x]
-        ends = [int(x) for x in str(record["exonEnds"]).split(",") if x]
-    except KeyError, ValueError:
+        if "exonStarts" in record:
+            starts, ends = _ints(record["exonStarts"]), _ints(record["exonEnds"])
+        else:  # bigGenePred/bed12: block offsets relative to chromStart
+            origin = int(record["chromStart"])
+            starts = [origin + offset for offset in _ints(record["chromStarts"])]
+            ends = [s + size for s, size in zip(starts, _ints(record["blockSizes"]), strict=True)]
+    except KeyError, ValueError, TypeError:
         return None
     if not starts or len(starts) != len(ends):
         return None
@@ -106,7 +116,7 @@ def _shape_record(
 ) -> dict[str, Any]:
     record = {k: v for k, v in raw.items() if k not in spec.drop_fields}
     position = _record_position(record, chrom)
-    if "exonStarts" in record and (exons := _exons(record)) is not None:
+    if ("exonStarts" in record or "chromStarts" in record) and (exons := _exons(record)):
         record["exons"] = exons
     other = (record.get("otherChrom"), record.get("otherStart"), record.get("otherEnd"))
     if isinstance(other[0], str) and isinstance(other[1], int) and isinstance(other[2], int):
@@ -142,9 +152,10 @@ def _signal_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
 class UcscService:
     """Allowlisted, bounded access to UCSC tracks, sequence and gene-position search."""
 
-    def __init__(self, client: UcscClient) -> None:
-        """Wrap a configured :class:`UcscClient`."""
+    def __init__(self, client: UcscClient, blat: BlatService | None = None) -> None:
+        """Wrap a configured :class:`UcscClient` (and the BLAT backend, default: none)."""
         self.client = client
+        self.blat = blat or BlatService(BlatSettings())
 
     async def chromosomes(self, assembly: Assembly) -> dict[str, int]:
         """Chromosome name -> size for the assembly (cached by the client)."""

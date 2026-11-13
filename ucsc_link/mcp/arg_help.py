@@ -99,6 +99,15 @@ def describe_constraints(field_schema: Mapping[str, Any]) -> tuple[list[str], st
         lo_s = str(int(min_items)) if min_items is not None else "0"
         hi_s = str(int(max_items)) if max_items is not None else "?"
         return [f"{lo_s}..{hi_s} items"], f"must have between {lo_s} and {hi_s} items"
+    for node in nodes:
+        if isinstance(node, Mapping) and ("minLength" in node or "maxLength" in node):
+            lo_s, hi_s = str(node.get("minLength", 0)), str(node.get("maxLength", "?"))
+            phrase = f"must be a string of {lo_s}-{hi_s} characters"
+            if node.get("pattern"):
+                phrase += f" matching {node['pattern']}"
+            if field_schema.get("description"):
+                phrase += f" ({field_schema['description']})"
+            return [f"{lo_s}..{hi_s} characters"], phrase
     return None
 
 

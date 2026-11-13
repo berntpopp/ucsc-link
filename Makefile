@@ -1,6 +1,6 @@
 .PHONY: help install lock upgrade sync \
         format format-check lint lint-ci lint-fix lint-loc lint-readme lint-surface \
-        typecheck test test-fast test-unit test-integration test-cov \
+        typecheck test test-fast test-unit test-integration test-blat test-cov \
         check ci-local precommit clean \
         dev mcp-serve \
         docker-build docker-up docker-down docker-logs docker-url info
@@ -65,6 +65,12 @@ test-unit: ## Run unit tests
 
 test-integration: ## Run live-endpoint integration tests
 	uv run pytest tests -q -m "integration"
+
+KENT_DIR ?= .cache/kent
+
+test-blat: ## Real Kent BLAT/isPcr on a tiny genome (fetches pinned binaries, ~30 MB once)
+	uv run ucsc-link-blat-fetch $(KENT_DIR) gfServer gfClient gfPcr faToTwoBit
+	UCSC_LINK_KENT_BIN=$(KENT_DIR)/bin uv run pytest tests/integration/test_blat_kent.py -q -m blat
 
 test-cov: ## Run tests with coverage
 	uv run pytest tests -m "not integration" --cov=ucsc_link --cov-report=term-missing --cov-report=html

@@ -6,10 +6,103 @@
 # container_name on the shared external npm_default network. Mirrors the
 # gtex-link / mgi-link fleet pattern.
 #
+# Self-hosted BLAT / in-silico PCR (docs/deployment.md#blat-and-in-silico-pcr), all on
+# the same release image:
+#   ucsc-blat-fetch     run-once init: downloads the SHA-256-pinned Kent binaries and
+#                       hg38.2bit (~0.86 GB, first run only) onto the ucsc-blat volume.
+#                       Kent tools: free for academic/non-profit/personal use only.
+#   ucsc-gfserver-hg38  long-running gfServer (~2.5 GB RSS, ~70 s to load), internal
+#                       network only, volume read-only.
+#   ucsc_link           mounts the volume read-only and runs gfClient/gfPcr itself. It
+#                       does NOT wait for BLAT: until gfServer is ready the BLAT tools
+#                       answer upstream_unavailable and get_diagnostics says so.
+#
 #   docker compose -f docker/docker-compose.npm.yml --env-file .env.docker up -d
 name: ucsc-link-npm
 
 services:
+  ucsc-blat-fetch:
+    image: ${UCSC_LINK_IMAGE:?Set UCSC_LINK_IMAGE to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}
+    pull_policy: missing
+    # Idempotent: verified files are kept, so a restart re-hashes (~5 s) instead of
+    # re-downloading. Add "hg19" here (and a gfserver-hg19 service) to serve hg19.
+    entrypoint: ["ucsc-link-blat-fetch", "/opt/blat", "gfServer", "gfClient", "gfPcr", "hg38"]
+    volumes:
+      - ucsc-blat:/opt/blat
+    networks:
+      - ucsc_link_internal_net
+    restart: "no"
+    read_only: true
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "1.0"
+          pids: 64
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ucsc-gfserver-hg38:
+    image: ${UCSC_LINK_IMAGE:?Set UCSC_LINK_IMAGE to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}
+    pull_policy: missing
+    depends_on:
+      ucsc-blat-fetch:
+        condition: service_completed_successfully
+    # One server serves BLAT and isPcr: -stepSize=5 (UCSC's PCR setting) indexes every
+    # 15-mer, which gfPcr's 15-base perfect 3' match needs; BLAT is unaffected.
+    # Listens on 8000 inside its own network namespace (the fleet's container port);
+    # reachable only on ucsc_link_internal_net, never published. No -seqLog/-ipLog.
+    entrypoint: ["/opt/blat/bin/gfServer", "start", "0.0.0.0", "8000", "-stepSize=5", "hg38.2bit"]
+    working_dir: /opt/blat/hg38
+    expose:
+      - "8000"
+    volumes:
+      - ucsc-blat:/opt/blat:ro
+    networks:
+      - ucsc_link_internal_net
+    healthcheck:
+      test: ["CMD", "/opt/blat/bin/gfServer", "status", "127.0.0.1", "8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Measured: ~70 s to index hg38 on a workstation; allow slow disks.
+      start_period: 300s
+    restart: unless-stopped
+    read_only: true
+    user: "10001:10001"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=1777
+    deploy:
+      resources:
+        limits:
+          # Measured peak RSS 2.53 GB (steady 2.24 GB) for hg38 at -stepSize=5.
+          memory: ${UCSC_GFSERVER_MEMORY_LIMIT:-3g}
+          cpus: "1.0"
+          pids: 64
+        reservations:
+          memory: 2560m
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
+
   ucsc_link:
     # Deploy pulls the released, attested image; it never builds from source.
     # Pin a digest, not a tag: there is no `latest`, and only a digest is immutable.
@@ -29,6 +122,12 @@ services:
       - 'UCSC_LINK_CORS_ORIGINS=["https://ucsc-link.genefoundry.org"]'
       - UCSC_LINK_LOG_LEVEL=${LOG_LEVEL_API:-INFO}
       - UCSC_LINK_LOG_FORMAT=json
+      - 'UCSC_LINK_BLAT__SERVERS={"hg38":"ucsc-gfserver-hg38:8000"}'
+      - UCSC_LINK_BLAT__DATA_DIR=/opt/blat
+      - UCSC_LINK_BLAT__TMP_DIR=/tmp/ucsc-link
+    volumes:
+      # Kent binaries + 2bit: gfClient/gfPcr extend gfServer's hits locally.
+      - ucsc-blat:/opt/blat:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://127.0.0.1:8000/health"]
       interval: 30s
@@ -69,6 +168,9 @@ services:
       - ALL
     pids_limit: 256
     init: true
+
+volumes:
+  ucsc-blat:
 
 networks:
   ucsc_link_internal_net:

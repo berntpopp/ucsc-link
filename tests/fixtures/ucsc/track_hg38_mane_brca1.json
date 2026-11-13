@@ -1,0 +1,42 @@
+{
+ "downloadTime": "2026:11:13T10:41:47Z",
+ "downloadTimeStamp": 1794566507,
+ "genome": "hg38",
+ "trackType": "bigGenePred",
+ "track": "mane",
+ "chrom": "chr17",
+ "chromSize": 83257441,
+ "bigDataUrl": "/gbdb/hg38/mane/mane.bb",
+ "start": 43044294,
+ "end": 43125483,
+ "mane": [
+  {
+   "chrom": "chr17",
+   "chromStart": 43044294,
+   "chromEnd": 43125364,
+   "name": "ENST00000357654.9",
+   "score": 0,
+   "strand": "-",
+   "thickStart": 43045677,
+   "thickEnd": 43124096,
+   "reserved": "8,81,156",
+   "blockCount": 23,
+   "blockSizes": "1508,61,74,55,84,41,78,88,311,191,127,172,89,3426,77,46,106,140,89,78,54,99,94,",
+   "chromStarts": "0,3348,4826,6768,12757,19038,19579,23313,26633,30036,32193,38109,46649,47140,51551,52949,55480,59827,60573,62161,71431,79722,80976,",
+   "name2": "ENST00000357654.9",
+   "cdsStartStat": "cmpl",
+   "cdsEndStat": "cmpl",
+   "exonFrames": "1,0,1,0,0,1,1,0,1,2,1,0,1,1,2,1,0,1,2,2,2,0,-1,",
+   "type": "mRNA",
+   "geneName": "ENSG00000012048.28",
+   "geneName2": "BRCA1",
+   "geneType": "protein_coding",
+   "ensemblProtAcc": "ENSP00000350283.3",
+   "ncbiId": "NM_007294.4",
+   "ncbiGene": "GeneID:672",
+   "ncbiProtAcc": "NP_009225.1",
+   "maneStat": "MANE Select"
+  }
+ ],
+ "itemsReturned": 1
+}

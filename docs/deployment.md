@@ -2,9 +2,10 @@
 
 ## Docker
 
-The image ships no data and keeps no on-disk state: every tool calls the live UCSC JSON API
-and responses are cached in-process only (TTL). The production overlays run it with a
-read-only root filesystem and a tmpfs; no volume is needed.
+The image ships no data and keeps no on-disk state: the track and sequence tools call the live
+UCSC JSON API and responses are cached in-process only (TTL). The production overlays run it
+with a read-only root filesystem and a tmpfs. The only volume is the optional BLAT volume
+(see [BLAT and in-silico PCR](#blat-and-in-silico-pcr)).
 
 ```bash
 # Local dev (loopback-published, builds from source)
@@ -53,6 +54,172 @@ Self-check that the controller can render and project this overlay:
 UCSC_LINK_IMAGE="ghcr.io/berntpopp/ucsc-link@sha256:<64 hex>" docker compose -f docker/docker-compose.npm.yml config --format json > /tmp/r.json
 # from strato_v6_docker_npm: uv run python -c "import sys,json; sys.path.insert(0,'scripts'); from utils.deployment_preflight import canonical_projection; canonical_projection(json.load(open('/tmp/r.json')), project='ucsc-link'); print('PROJECTION OK')"
 ```
+
+## BLAT and in-silico PCR
+
+`find_blat_alignments` and `predict_pcr_products` do not use UCSC's hosted hgBlat/hgPcr:
+those pages sit behind a Cloudflare Turnstile human check, which a server must not try to
+bypass. Instead a deployment runs its own UCSC Kent `gfServer`. The release image does not
+contain the Kent tools (licence, below); they are downloaded at deploy time.
+
+### What runs where
+
+`docker/docker-compose.npm.yml` runs three services, all from the same release image:
+
+1. **`ucsc-blat-fetch`** (run once, `restart: "no"`) runs `ucsc-link-blat-fetch /opt/blat
+   gfServer gfClient gfPcr hg38`. It downloads the Kent binaries from UCSC's frozen
+   `https://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64.v479/` directory and
+   `hg38.2bit` from `https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/`, checks each
+   file against the SHA-256 pinned in `ucsc_link/blat_fetch.py` (the 2bit also against
+   UCSC's `md5sum.txt` value), and installs it atomically on the named volume `ucsc-blat`
+   (`bin/<tool>`, `hg38/hg38.2bit`). A file that is already present and verified is kept,
+   so later starts only re-hash (a few seconds). hgdownload is a plain HTTPS file server
+   (no human check; verified 2026-11-13).
+2. **`ucsc-gfserver-hg38`** starts after the fetch succeeded:
+   `gfServer start 0.0.0.0 8000 -stepSize=5 hg38.2bit` in `/opt/blat/hg38`, volume
+   read-only, on `ucsc_link_internal_net` only (no published port, never on the proxy
+   network), non-root, read-only root filesystem, `cap_drop: ALL`, `no-new-privileges`.
+   Its healthcheck is `gfServer status 127.0.0.1 8000`. Query sequences are not logged
+   (no `-seqLog`/`-ipLog`).
+3. **`ucsc_link`** (the MCP server) mounts the same volume read-only at `/opt/blat` and runs
+   `gfClient` / `gfPcr` itself as subprocesses: `gfServer` only returns coarse tile hits,
+   and the clients need the `.2bit` locally to build the final alignment or product. The
+   server does not wait for BLAT. Until `gfServer` is ready the two tools answer
+   `upstream_unavailable` (retryable), and `get_diagnostics` reports per assembly
+   `data_on_disk`, `server_ready` and `available`. `get_server_capabilities` lists the
+   configured assemblies under `blat.configured_assemblies`.
+
+The release Compose files (`docker-compose.yml`, `docker-compose.prod.yml`, used by the CI
+smoke and conformance runs) have no BLAT services. There the tools report
+`upstream_unavailable` with `allowed_values: []`, and everything else works.
+
+### One gfServer, not two
+
+UCSC runs a separate PCR server with a smaller step size. Here one server per assembly does
+both. `-stepSize=5` with the default `-tileSize=11` indexes an 11-mer starting at every
+fifth base, so any 15 perfectly matching bases contain one complete indexed tile. That is
+exactly what `gfPcr`'s default 15-base perfect 3' match needs; the default step of 11 can
+miss short primers. BLAT works at either step (step 5 is slightly more sensitive and uses
+more memory). Measured on hg38 against this server: a 100 bp BRCA1 exon sequence maps to
+chr17:43,092,001-43,092,100 at 100.0 %, the same read with 3 mismatches at 97.0 %, the
+reverse complement on `-`, and the HTT exon-1 primers
+(`ATGAAGGCCTTCGAGTCCCTCAAGTCCTTC` / `CTCACGGTCGGTGCAGCGGC`) give one 247 bp product at
+chr4:3,074,847-3,075,093. A second server would cost another ~2.5 GB for no gain.
+
+### Hardware (measured 2026-11-13, hg38)
+
+| Item | Value |
+|------|-------|
+| `gfServer` resident memory | 2.24 GB steady, 2.53 GB peak (compose limit `UCSC_GFSERVER_MEMORY_LIMIT`, default `3g`) |
+| `gfServer` start to ready | about 70 s on a workstation SSD (healthcheck `start_period: 300s`) |
+| Volume disk | `hg38.2bit` 835,393,456 B plus three binaries about 22 MB, so about 0.86 GB (hg19 adds 816,241,703 B) |
+| First-run download | about 1 min at ~14 MB/s; one file at a time |
+| App per query | BLAT a 100 bp query or one PCR pair takes 10-30 ms warm; queries are capped at 25,000 bp and 60 s |
+
+### Deploy
+
+```bash
+# .env.docker next to the overlay
+UCSC_LINK_IMAGE=ghcr.io/berntpopp/ucsc-link@sha256:<digest>
+UCSC_GFSERVER_MEMORY_LIMIT=3g        # optional
+
+docker compose -f docker/docker-compose.npm.yml --env-file .env.docker up -d
+docker compose -f docker/docker-compose.npm.yml logs ucsc-blat-fetch   # "ok ... sha256=..." per file
+docker compose -f docker/docker-compose.npm.yml ps                     # gfserver turns healthy after ~70 s
+```
+
+The app reads its BLAT settings from the overlay:
+
+| Variable | Overlay value | Purpose |
+|----------|---------------|---------|
+| `UCSC_LINK_BLAT__SERVERS` | `{"hg38":"ucsc-gfserver-hg38:8000"}` | JSON map assembly to gfServer `host:port`. Empty (the default) = BLAT not deployed. |
+| `UCSC_LINK_BLAT__DATA_DIR` | `/opt/blat` | Volume root: `bin/gfClient`, `bin/gfPcr`, `<asm>/<asm>.2bit`. |
+| `UCSC_LINK_BLAT__TMP_DIR` | `/tmp/ucsc-link` | Per-call scratch files (tmpfs, 64 MB). |
+| `UCSC_LINK_BLAT__TIMEOUT_S` | `60` (default) | Wall-clock limit per gfClient/gfPcr run; the whole process group is killed on expiry. |
+| `UCSC_LINK_BLAT__MAX_CONCURRENCY` | `2` (default) | Concurrent gfClient/gfPcr subprocesses; further calls queue. |
+
+Check health after deploy with `get_diagnostics` (look for
+`"hg38": {"data_on_disk": true, "server_ready": true, "available": true}`), or
+`docker exec <gfserver container> /opt/blat/bin/gfServer status 127.0.0.1 8000`.
+
+To verify the volume by hand: `sha256sum /opt/blat/hg38/hg38.2bit` must print the `hg38`
+value in `ucsc_link/blat_fetch.py` (`1f67aaa1...acec0`); `md5sum` must print UCSC's
+`dcc3ea27079aa6dc3f9deccd7275e0f8`.
+
+The fleet controller (`strato_v6_docker_npm`) needs an adapter entry for this stack before
+it can deploy it: application service `ucsc_link`, init service `ucsc-blat-fetch`, logical
+volume `ucsc-blat`. The router's `validate-deployed-overlay` gate already passes.
+
+### Input contract
+
+- `find_blat_alignments`: one DNA sequence of 20-25,000 bases (the UCSC web BLAT range),
+  A/C/G/T/N only (other IUPAC codes and `U` are refused), whitespace and one leading FASTA
+  header line ignored, a second record refused. `min_identity` 0-100 (default 90).
+  Hits are sorted by UCSC's web score; `identity` reproduces UCSC's
+  `100 - pslCalcMilliBad(isMrna)/10`. A minimum score of 20 lets a 20 bp query report a
+  perfect hit, so short spurious hits can follow the real one; `query_coverage` tells them
+  apart.
+- `predict_pcr_products`: primers of 15-50 A/C/G/T bases written 5' to 3' (degenerate bases
+  refused), `max_product_size` 50-10,000 (default 4,000, as UCSC), `gfPcr` defaults for
+  matching (15 perfect 3' bases; 2 matches per mismatch over the last 18). Product sequences
+  are returned up to 1,000 bp each (`sequence_truncated` flags the rest).
+- hg38 includes alternate haplotypes, so a specific pair can also hit an `_alt` contig.
+  Each hit or product carries `alt_or_patch`, and `primary_total` counts only the primary
+  assembly.
+
+### Adding hg19
+
+All code paths are assembly-generic and `hg19.2bit` is already pinned, so this is
+configuration only:
+
+1. Append `hg19` to the `ucsc-blat-fetch` entrypoint.
+2. Copy the `ucsc-gfserver-hg38` service as `ucsc-gfserver-hg19` with `hg19.2bit` and
+   `working_dir: /opt/blat/hg19` (about the same memory: plan another ~3 GB).
+3. Set `UCSC_LINK_BLAT__SERVERS={"hg38":"ucsc-gfserver-hg38:8000","hg19":"ucsc-gfserver-hg19:8000"}`.
+
+### Updating the pinned binaries or genomes
+
+1. Download the new file once and compute `sha256sum` (and read UCSC's `md5sum.txt` for a
+   genome). Prefer a frozen `linux.x86_64.vNNN` directory over the moving `linux.x86_64/`.
+2. Change the URL and digests in `PINS` (`ucsc_link/blat_fetch.py`), run
+   `make test-blat` (CI re-downloads because its cache key is that file's hash), and
+   release. On the next deploy the init sees the old file fail the new pin and replaces it.
+
+### Licence obligations
+
+BLAT, `gfServer`, `gfClient` and `gfPcr` are free for academic, non-profit and personal use.
+Commercial use requires a licence from Kent Informatics (https://kentinformatics.com). That
+is why the binaries are fetched by each deployment and never published in the GHCR image;
+the operator who deploys them accepts that licence. The genome sequence is UCSC/GRC data
+under the [UCSC Conditions of Use](https://genome.ucsc.edu/conditions.html). Cite Kent WJ,
+*BLAT--the BLAST-like alignment tool*, Genome Res. 2002;12(4):656-64 (in
+`get_server_capabilities` under `blat.citation`).
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+|---------|---------------|
+| Tools answer `upstream_unavailable`, diagnostics `data_on_disk: false` | The fetch is still running or failed: `docker compose ... logs ucsc-blat-fetch`. |
+| `error ... sha256 mismatch` in the fetch log | UCSC changed the file or the download was corrupted. Nothing was installed. Retry once; if it persists, update the pin (above) after checking the new file. |
+| `server_ready: false` while data is present | `gfServer` is still loading (allow ~70 s) or was killed. Check `docker compose ... ps` and `docker inspect` for `OOMKilled`; raise `UCSC_GFSERVER_MEMORY_LIMIT` (at least 3g for hg38). |
+| A query answers `upstream_unavailable` after 60 s | Very long or repetitive query: shorten it; `UCSC_LINK_BLAT__TIMEOUT_S` raises the limit. |
+| `not deployed for hg19` | Only configured assemblies are served; see *Adding hg19*. |
+
+### Local development
+
+Without Docker: fetch once, start a gfServer, point the app at it.
+
+```bash
+uv run ucsc-link-blat-fetch ~/blat gfServer gfClient gfPcr hg38      # ~0.86 GB, once
+(cd ~/blat/hg38 && ../bin/gfServer start 127.0.0.1 17779 -stepSize=5 hg38.2bit &)
+until ~/blat/bin/gfServer status 127.0.0.1 17779 >/dev/null; do sleep 5; done
+UCSC_LINK_BLAT__SERVERS='{"hg38":"127.0.0.1:17779"}' UCSC_LINK_BLAT__DATA_DIR=~/blat uv run ucsc-link
+pkill -f 'gfServer start 127.0.0.1 17779'     # stop it when done (frees ~2.5 GB)
+```
+
+Tests: `make test-blat` runs the real Kent tools on a 10 kb synthetic genome (CI does this on
+every push). Against a real hg38 server:
+`UCSC_LINK_LIVE_BLAT=127.0.0.1:17779 UCSC_LINK_BLAT__DATA_DIR=~/blat uv run pytest tests/integration/test_blat_live_hg38.py -m blat`.
 
 ## Configuration (environment variables)
 
@@ -123,7 +290,7 @@ application on one port:
 ```
 :8000
   GET  /health   → FastAPI health endpoint (capabilities_version, status)
-  *    /mcp      → FastMCP Streamable-HTTP (all 6 tools, ucsc:// resources)
+  *    /mcp      → FastMCP Streamable-HTTP (8 tools, ucsc:// resources)
 ```
 
 This is the transport the GeneFoundry router uses — it proxies the `/mcp` endpoint as

@@ -84,3 +84,6 @@ temp/
 *~
 .DS_Store
 Thumbs.db
+
+# Local Kent binaries for make test-blat
+.cache/

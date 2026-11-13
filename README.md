@@ -8,8 +8,10 @@
 An **MCP** server (Streamable HTTP or stdio) for region-level genome context from the
 [UCSC Genome Browser](https://genome.ucsc.edu/): a curated allowlist of tracks (GENCODE and
 RefSeq Select/MANE transcripts, RepeatMasker, segmental duplications, phyloP conservation,
-ENCODE cCREs, SpliceVarDB, Varaico) plus bounded reference sequence, on **hg38** and
-**hg19**, fetched live from the official [UCSC JSON API](https://genome.ucsc.edu/goldenPath/help/api.html).
+ENCODE cCREs, CpG islands, simple repeats, problematic regions, SpliceVarDB, Varaico) plus
+bounded reference sequence, on **hg38** and **hg19**, fetched live from the official
+[UCSC JSON API](https://genome.ucsc.edu/goldenPath/help/api.html), and **BLAT / in-silico PCR**
+on a self-hosted UCSC `gfServer`.
 It is one backend in the GeneFoundry `-link` fleet.
 
 > [!IMPORTANT]
@@ -63,8 +65,10 @@ Use `unified` (the default) for MCP over HTTP; `--transport http` serves `/healt
 | `search_genome` | Gene/transcript → 0-based positions (MANE, HGNC, GENCODE, RefSeq) |
 | `get_region_annotations` | One track's records over `[start, end)`: native UCSC fields + a normalized `position` |
 | `get_reference_sequence` | Reference DNA for a window (≤ 10 kb), soft-masked, optional reverse complement |
+| `find_blat_alignments` | BLAT one DNA sequence (20–25,000 bp) → hits with UCSC score, identity, strand, blocks |
+| `predict_pcr_products` | In-silico PCR for a primer pair → products with location, size, primer mismatches |
 | `get_server_capabilities` | Discovery: tracks, coordinate convention, limits, rate-limit policy, error codes |
-| `get_diagnostics` | Local runtime state: request budget, cache hits, latency (no upstream call) |
+| `get_diagnostics` | Local runtime state: request budget, cache hits, latency, live BLAT availability |
 
 Leaf names are **unprefixed** per Tool-Naming Standard v1. Behind `genefoundry-router` this
 server mounts under the namespace `ucsc`, so `get_region_annotations` surfaces as
@@ -79,6 +83,15 @@ get_region_annotations(assembly="hg38", chrom="chr4", start=3074800, end=3075000
 → (CAG)n Simple_repeat at chr4:3,074,877-3,074,940 (start=3074876, end=3074940)
 ```
 
+**BLAT and in-silico PCR** run on the deployment's own UCSC Kent `gfServer` (hg38; hg19 is a
+configuration change), because UCSC's hosted BLAT/PCR pages sit behind a human check. A
+deployment without it still serves every other tool, and these two answer
+`upstream_unavailable` while `get_diagnostics` shows what is live. The Kent tools are free
+for academic, non-profit and personal use only (commercial use needs a Kent Informatics
+licence), so they are downloaded at deploy time and never shipped in the image. Setup,
+measured hardware needs (~3 GB RAM, ~0.9 GB disk, ~70 s start) and troubleshooting:
+[docs/deployment.md](docs/deployment.md#blat-and-in-silico-pcr).
+
 ## Data & provenance
 
 **Source.** The official UCSC Genome Browser JSON API, `https://api.genome.ucsc.edu`. No key.
@@ -91,7 +104,9 @@ phyloP and ENCODE are freely usable with attribution.
 labelled `non_commercial: true`; they are served as source-attributed context with link-outs,
 and public hosting here does not grant redistribution rights. hg38-only: `spliceVarDb`,
 `cCREregistry`, `encodeCcreCombined`; phyloP is `phyloP100way` on hg38 and `phyloP100wayAll`
-on hg19 (either name is accepted on both). Search results carry no strand; query
+on hg19 (either name is accepted on both). Problematic regions: `encBlacklist` (hg38/hg19),
+`grcExclusions`, GIAB `alldifficultregions` and `alllowmapandsegdupregions` (hg38); also
+`mane` (hg38), `simpleRepeat` and `cpgIslandExt`. Search results carry no strand; query
 `ncbiRefSeqSelect` over the gene for it.
 
 **Rate limit — the two UCSC rules disagree.** The API help recommends at most **1 request per
@@ -115,7 +130,8 @@ evidence data, not instructions.
 ## Documentation
 
 - [Deployment](docs/deployment.md) — Docker, the `UCSC_LINK_*` environment reference,
-  transports, Host/Origin allowlists, and the rate-limit settings.
+  transports, Host/Origin allowlists, the rate-limit settings, and the self-hosted BLAT /
+  in-silico PCR stack.
 - [Design record](docs/superpowers/specs/2026-11-13-ucsc-link-design.md) — scope, track
   allowlist research, the rate-limit decision, and what was left out.
 - [AGENTS.md](AGENTS.md) — engineering conventions, invariants, and make targets.
@@ -131,4 +147,6 @@ gate: format, lint, line budget, README standard, surface budget, mypy `--strict
 
 Code: [MIT](LICENSE). UCSC data are subject to the
 [UCSC Conditions of Use](https://genome.ucsc.edu/conditions.html) and each track's provider
-terms listed above.
+terms listed above. The UCSC Kent BLAT tools fetched by a deployment ([NOTICE](NOTICE)) are not covered by the MIT
+licence: free for academic, non-profit and personal use, commercial use licensed by Kent
+Informatics.

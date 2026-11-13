@@ -67,3 +67,22 @@ def test_phylop_name_resolves_to_the_assembly_specific_track(
     assembly: str, requested: str, served: str
 ) -> None:
     assert track_for(assembly, requested).track == served  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("track", "assemblies"),
+    [
+        ("mane", {"hg38"}),
+        ("encBlacklist", {"hg38", "hg19"}),
+        ("grcExclusions", {"hg38"}),
+        ("alldifficultregions", {"hg38"}),
+        ("alllowmapandsegdupregions", {"hg38"}),
+        ("simpleRepeat", {"hg38", "hg19"}),
+        ("cpgIslandExt", {"hg38", "hg19"}),
+    ],
+)
+def test_problematic_region_and_annotation_tracks_are_allowlisted(
+    track: str, assemblies: set[str]
+) -> None:
+    assert set(TRACKS[track].assemblies) == assemblies
+    assert not TRACKS[track].non_commercial

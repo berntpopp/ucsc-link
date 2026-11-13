@@ -232,3 +232,15 @@ async def test_search_ranks_exact_symbol_matches_first(ucsc_service: UcscService
     exact = out["exact_matches"]
     assert exact >= 2 and all(label == "BRCA1" for label in labels[:exact])
     assert "BARD1" in labels[exact:]
+
+
+async def test_mane_bigbed_blocks_become_strand_aware_exons(ucsc_service: UcscService) -> None:
+    out = await ucsc_service.region_annotations("hg38", "chr17", 43044294, 43125364, "mane", 10)
+    record = out["results"][0]
+    assert record["geneName2"] == "BRCA1" and record["maneStat"] == "MANE Select"
+    exons = record["exons"]
+    assert len(exons) == record["blockCount"] == 23
+    # Same transcript as the RefSeq Select fixture: identical exon 1 / exon 23.
+    assert exons[0] == {"exon": 1, "start": 43125270, "end": 43125364}
+    assert exons[-1] == {"exon": 23, "start": 43044294, "end": 43045802}
+    assert "reserved" not in record  # display colour dropped

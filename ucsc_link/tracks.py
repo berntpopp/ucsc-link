@@ -47,6 +47,10 @@ OPEN_TERMS = (
     "Freely available for any use per UCSC Conditions of Use; cite UCSC and the "
     "original data provider."
 )
+_GIAB_CITATION = (
+    "Dwarshuis N, et al. The GIAB genomic stratifications resource for human reference "
+    "genomes. Nat Commun. 2024;15(1):9029. PMID:39424793"
+)
 
 
 @dataclass(frozen=True)
@@ -193,6 +197,80 @@ TRACKS: dict[str, TrackSpec] = {
                 "geneOrigStrs",
                 "variantOrigStrs",
             ),
+        ),
+        TrackSpec(
+            "mane",
+            "MANE Select / Plus Clinical transcripts",
+            "genes",
+            "feature",
+            {"hg38": "MANE"},
+            "MANE (NCBI RefSeq + EMBL-EBI Ensembl) via UCSC",
+            OPEN_TERMS,
+            citation="Morales J, et al. A joint NCBI and EMBL-EBI transcript set for clinical "
+            "genomics and research. Nature. 2022;604(7905):310-315. PMID:35388217",
+            drop_fields=("reserved", "exonFrames"),
+        ),
+        TrackSpec(
+            "encBlacklist",
+            "ENCODE Blacklist V2 (problematic regions for NGS)",
+            "problematic",
+            "feature",
+            {"hg38": "ENCODE Blacklist V2", "hg19": "ENCODE Blacklist V2"},
+            "ENCODE Blacklist (Boyle lab) via UCSC",
+            OPEN_TERMS,
+            citation="Amemiya HM, Kundaje A, Boyle AP. The ENCODE Blacklist: Identification of "
+            "Problematic Regions of the Genome. Sci Rep. 2019;9(1):9354. PMID:31249361",
+        ),
+        TrackSpec(
+            "grcExclusions",
+            "GRC exclusions (false duplications / contamination in GRCh38)",
+            "problematic",
+            "feature",
+            {"hg38": "GRC Exclusions"},
+            "Genome Reference Consortium via UCSC",
+            OPEN_TERMS,
+        ),
+        TrackSpec(
+            "alldifficultregions",
+            "GIAB all difficult regions (stratification v3.5)",
+            "problematic",
+            "feature",
+            {"hg38": "All difficult regions"},
+            "Genome in a Bottle (NIST) via UCSC",
+            OPEN_TERMS,
+            citation=_GIAB_CITATION,
+        ),
+        TrackSpec(
+            "alllowmapandsegdupregions",
+            "GIAB low mappability + segmental duplication regions",
+            "problematic",
+            "feature",
+            {"hg38": "LowMap+SegDup"},
+            "Genome in a Bottle (NIST) via UCSC",
+            OPEN_TERMS,
+            citation=_GIAB_CITATION,
+        ),
+        TrackSpec(
+            "simpleRepeat",
+            "Simple tandem repeats (Tandem Repeats Finder)",
+            "repeats",
+            "feature",
+            {"hg38": "Simple Repeats", "hg19": "Simple Repeats"},
+            "Tandem Repeats Finder (G. Benson) via UCSC",
+            OPEN_TERMS,
+            citation="Benson G. Tandem repeats finder: a program to analyze DNA sequences. "
+            "Nucleic Acids Res. 1999;27(2):573-80. PMID:9862982",
+        ),
+        TrackSpec(
+            "cpgIslandExt",
+            "CpG islands",
+            "regulation",
+            "feature",
+            {"hg38": "CpG Islands", "hg19": "CpG Islands"},
+            "UCSC (Gardiner-Garden & Frommer criteria)",
+            OPEN_TERMS,
+            citation="Gardiner-Garden M, Frommer M. CpG islands in vertebrate genomes. "
+            "J Mol Biol. 1987;196(2):261-82. PMID:3656447",
         ),
     )
 }

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ucsc-link"
-version = "0.2.0"
-description = "MCP server for curated UCSC Genome Browser region tracks (genes, repeats, segmental duplications, conservation, ENCODE cCREs) and bounded reference sequence on hg38/hg19"
+version = "0.3.0"
+description = "MCP server for curated UCSC Genome Browser region tracks (genes, repeats, segmental duplications, problematic regions, conservation, ENCODE cCREs), bounded reference sequence, and self-hosted BLAT / in-silico PCR on hg38/hg19"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
@@ -13,7 +13,8 @@ authors = [
 ]
 keywords = [
     "ucsc", "genome-browser", "hg38", "hg19", "repeatmasker", "segmental-duplication",
-    "phylop", "conservation", "encode", "ccre", "reference-sequence", "mcp", "bioinformatics",
+    "phylop", "conservation", "encode", "ccre", "reference-sequence", "blat", "in-silico-pcr",
+    "mcp", "bioinformatics",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -60,6 +61,7 @@ Repository = "https://github.com/berntpopp/ucsc-link"
 [project.scripts]
 ucsc-link = "server:main"
 ucsc-link-mcp = "mcp_server:main"
+ucsc-link-blat-fetch = "ucsc_link.blat_fetch:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ucsc_link"]
@@ -92,7 +94,7 @@ indent-style = "space"
 line-ending = "lf"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*" = ["S101", "S104", "S110", "T20", "B011", "SIM105", "SIM108"]
+"tests/**/*" = ["S101", "S104", "S110", "S603", "T20", "B011", "SIM105", "SIM108"]
 "mcp_server.py" = ["T20"]
 "scripts/**/*" = ["T20"]
 
@@ -144,6 +146,7 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests that hit the live UCSC JSON API",
+    "blat: real Kent gfServer/gfClient/gfPcr on a tiny genome (make test-blat)",
     "unit: marks tests as unit tests",
     "mcp: marks tests that test MCP functionality",
 ]
