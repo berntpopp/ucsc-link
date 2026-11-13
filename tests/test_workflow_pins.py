@@ -6,8 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 # genefoundry-router v0.10.15. Both container-ci.yml and container-release.yml load
 # ReleaseConfig from their pinned commit, so both must track the same revision.
 ROUTER_SHA = "9ab6f5316954c5347be473e05abc620012026c66"
-SETUP_UV_SHA = "07a047e608db84b3d8c06cd9a7c7dcc9c355c18e"
-CODEQL_SHA = "9b3254085494b55a0f7c4c2b3d2d52cc712ce370"
+SETUP_UV_SHA = "68559e99cc807c1eb7e9238fd43a15bba460eec2"
+CODEQL_SHA = "33d7b85da1a04171e211befe2c739303b9a4c066"
 
 
 def test_release_workflows_pin_the_trusted_router_and_actions() -> None:
