@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 import pytest
 import respx
@@ -147,3 +149,17 @@ async def test_rate_limit_refusal_propagates_before_any_request() -> None:
             await c.get_json("/getData/track", {**PARAMS, "end": 3})
         assert route.call_count == 1
     await c.aclose()
+
+
+@respx.mock(base_url=BASE)
+async def test_concurrent_identical_calls_share_one_upstream_request(
+    respx_mock: respx.MockRouter, client: UcscClient
+) -> None:
+    async def slow(_: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.01)  # let the other callers start while this one is in flight
+        return httpx.Response(200, json=load("track_hg38_rmsk_htt"))
+
+    route = respx_mock.get("/getData/track").mock(side_effect=slow)
+    results = await asyncio.gather(*(client.get_json("/getData/track", PARAMS) for _ in range(3)))
+    assert route.call_count == 1
+    assert all(r["track"] == "rmsk" for r in results)

@@ -138,8 +138,10 @@ def register_region_tools(mcp: FastMCP) -> None:
         description=(
             "Find where a gene or transcript lies on an assembly (UCSC position search "
             "over MANE, HGNC, GENCODE and RefSeq). Returns 0-based half-open start/end "
-            "plus a 1-based display string, ready for get_region_annotations. UCSC search "
-            "gives no strand: get_region_annotations(track='ncbiRefSeqSelect') does. "
+            "plus a 1-based display string, ready for get_region_annotations. Exact "
+            "symbol/accession hits come first (`exact_matches` counts them), then UCSC's "
+            "looser text matches. UCSC search gives no strand: "
+            "get_region_annotations(track='ncbiRefSeqSelect') does. "
             "Signature: search_genome(assembly, query, limit=)."
         ),
     )
@@ -150,6 +152,8 @@ def register_region_tools(mcp: FastMCP) -> None:
             Field(
                 min_length=1,
                 max_length=100,
+                # No control/zero-width/bidi code points: UCSC redirects such queries away.
+                pattern=r"^[^\x00-\x1f\x7f-\x9f\u200b-\u200d\u2060\u202a-\u202e\u2066-\u2069\ufeff]+$",
                 description="Gene symbol, transcript accession or term, e.g. BRCA1, SHH, "
                 "NM_007294.4, ENST00000357654.9.",
                 examples=["BRCA1"],
@@ -197,7 +201,9 @@ def register_region_tools(mcp: FastMCP) -> None:
             "[start, end) on an explicit assembly: repeats (rmsk), segmental duplications "
             "(genomicSuperDups), phyloP conservation, ENCODE cCREs, GENCODE/RefSeq "
             "transcripts, SpliceVarDB/Varaico variants. Native UCSC fields are kept and "
-            "each record gains a normalized `position`. `total` is exact (null only past "
+            "each record gains a normalized `position`; transcripts also gain `exons` "
+            "numbered in transcript order (strand-aware), segmental duplications an "
+            "`other_position` for the partner copy. `total` is exact (null only past "
             f"the upstream item cap); `truncated` is honest. Windows: <= "
             f"{MAX_FEATURE_WINDOW_BP:,} bp, signal tracks <= {MAX_SIGNAL_WINDOW_BP:,} bp. "
             "Signature: get_region_annotations(assembly, chrom, start, end, track, limit=)."

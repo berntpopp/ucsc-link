@@ -119,3 +119,19 @@ def test_track_enum_matches_the_allowlist() -> None:
     from ucsc_link.tracks import TRACKS
 
     assert set(get_args(TrackName)) == set(TRACKS)
+
+
+async def test_search_query_with_control_or_bidi_chars_is_invalid_input(facade: Any) -> None:
+    # UCSC 302-redirects such queries off-origin; that must not look like an outage.
+    res = await _raw(facade, "search_genome", {"assembly": "hg38", "query": "BRCA1‮X"})
+    assert res.is_error is True
+    assert res.structured_content["error_code"] == "invalid_input"
+    assert res.structured_content["field"] == "query"
+
+
+async def test_oversized_window_error_offers_a_clamped_retry(facade: Any) -> None:
+    res = await _raw(facade, "get_region_annotations", {**HTT, "start": 0, "end": 50_000_000})
+    assert res.is_error is True
+    first = res.structured_content["_meta"]["next_commands"][0]
+    assert first["tool"] == "get_region_annotations"
+    assert first["arguments"]["start"] == 0 and first["arguments"]["end"] == 2_000_000
