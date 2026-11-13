@@ -5,7 +5,7 @@
 # (https://api.genome.ucsc.edu). The image ships NO data and keeps no on-disk state:
 # responses are cached in-process only.
 
-FROM python:3.14-slim@sha256:0741d101873c12ab927e6f8653feb8862b9bd58771177acb1b885b95141f91b4 AS builder
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -36,7 +36,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.8.7@sha256:1e26f9a868360eeb32500a35e05787ffff
 RUN uv sync --frozen --no-dev --active --no-install-project
 
 
-FROM python:3.14-slim@sha256:0741d101873c12ab927e6f8653feb8862b9bd58771177acb1b885b95141f91b4 AS prepared
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS prepared
 
 # UCSC_LINK_ALLOW_PUBLIC_BIND=true is the explicit, audited opt-in that the
 # F-04 bind guard requires: inside the container the server intentionally binds
