@@ -50,6 +50,18 @@ jobs:
       - name: Run CI checks (format, lint, typecheck, tests)
         run: make ci-local
 
+      # Real Kent gfServer/gfClient/gfPcr end to end on a tiny checked-in genome. The
+      # binaries are SHA-256-pinned (ucsc_link/blat_fetch.py) and cached on that file's
+      # hash, so UCSC's download server is hit only when the pins change.
+      - name: Cache pinned Kent binaries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/kent
+          key: kent-${{ hashFiles('ucsc_link/blat_fetch.py') }}
+
+      - name: BLAT / isPcr with real Kent tools
+        run: make test-blat
+
       # Coverage gate runs only on push to main to avoid a second full test run on
       # every PR iteration (concurrency-cancel + this split are the compute savers).
       - name: Coverage gate
