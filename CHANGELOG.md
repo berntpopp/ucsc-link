@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-13
+
+### Added
+
+- `find_blat_alignments`: BLAT one DNA sequence (20-25,000 bp, A/C/G/T/N, one optional FASTA
+  header) on a self-hosted UCSC Kent `gfServer`. Hits carry 0-based half-open coordinates +
+  1-based `display`, strand, UCSC web `score` and `identity` (kent `pslScore` /
+  `pslCalcMilliBad`), `query_coverage`, `blocks` (spliced alignments), `alt_or_patch`; the
+  payload adds `primary_total`.
+- `predict_pcr_products`: in-silico PCR (gfPcr defaults) for a 15-50 nt primer pair with
+  `max_product_size` (default 4,000, max 10,000): location, size, strand, per-primer mismatch
+  counts and the product sequence (first 1,000 bp). Both tools point `next_commands` at the
+  gene/exon annotation of the best hit/product.
+- BLAT availability is honest: an assembly without a deployed gfServer answers
+  `upstream_unavailable` naming the configured ones; `get_server_capabilities.blat` lists
+  configured assemblies, limits, score formula, Kent licence and citation;
+  `get_diagnostics.blat` probes each gfServer live.
+- `ucsc-link-blat-fetch`: deploy-time download of the Kent binaries (frozen
+  `linux.x86_64.v479`) and `hg38.2bit` / `hg19.2bit`, verified against pinned SHA-256 (+ UCSC
+  md5) and installed atomically. The Kent tools are never shipped in the image (free for
+  academic/non-profit/personal use; commercial use needs a Kent Informatics licence).
+- Deployed overlay: run-once `ucsc-blat-fetch` init -> hardened internal-only
+  `ucsc-gfserver-hg38` (`-stepSize=5`, one server for BLAT and PCR; measured 2.53 GB peak RSS,
+  ~70 s start) -> app mounting the `ucsc-blat` volume read-only. hg19 is configuration only.
+- Tracks: `mane` (MANE Select/Plus Clinical, with strand-aware exons), `encBlacklist`,
+  `grcExclusions`, GIAB `alldifficultregions` and `alllowmapandsegdupregions`,
+  `simpleRepeat`, `cpgIslandExt`.
+- `make test-blat`: real Kent tools end to end on a 10 kb synthetic genome (runs in CI);
+  opt-in acceptance against a real hg38 gfServer.
+
 ## [0.2.0] - 2026-11-13
 
 ### Added

@@ -248,8 +248,10 @@ def test_alt_and_fix_contigs_are_flagged_and_excluded_from_primary_total() -> No
 async def test_payload_counts_products_on_the_primary_assembly(tmp_path: pathlib.Path) -> None:
     fa = (FX / "hg38_htt_pcr.fa").read_text()
     alt = fa.replace(">chr4:", ">chr4_GL000257v2_alt:")
-    settings = _layout(tmp_path, "exit 0", gf_pcr=f"cat > \"$7\" <<'EOF'\n{fa}{alt}EOF")
+    settings = _layout(tmp_path, "exit 0", gf_pcr=f"cat > \"$7\" <<'EOF'\n{alt}{fa}EOF")
     out = await BlatService(settings).pcr(
         "hg38", "ATGAAGGCCTTCGAGTCCCTCAAGTCCTTC", "CTCACGGTCGGTGCAGCGGC", 4000, 10
     )
     assert out["total"] == 2 and out["primary_total"] == 1
+    # The primary-assembly product leads (and so drives next_commands), whatever gfPcr's order.
+    assert out["results"][0]["alt_or_patch"] is False

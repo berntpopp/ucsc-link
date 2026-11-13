@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ucsc-link"
-version = "0.2.0"
-description = "MCP server for curated UCSC Genome Browser region tracks (genes, repeats, segmental duplications, conservation, ENCODE cCREs) and bounded reference sequence on hg38/hg19"
+version = "0.3.0"
+description = "MCP server for curated UCSC Genome Browser region tracks (genes, repeats, segmental duplications, problematic regions, conservation, ENCODE cCREs), bounded reference sequence, and self-hosted BLAT / in-silico PCR on hg38/hg19"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
@@ -13,7 +13,8 @@ authors = [
 ]
 keywords = [
     "ucsc", "genome-browser", "hg38", "hg19", "repeatmasker", "segmental-duplication",
-    "phylop", "conservation", "encode", "ccre", "reference-sequence", "mcp", "bioinformatics",
+    "phylop", "conservation", "encode", "ccre", "reference-sequence", "blat", "in-silico-pcr",
+    "mcp", "bioinformatics",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

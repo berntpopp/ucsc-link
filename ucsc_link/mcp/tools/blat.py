@@ -74,7 +74,7 @@ def register_blat_tools(mcp: FastMCP) -> None:
         tags={"sequence", "blat"},
         description=(
             "Align one DNA sequence to the genome with BLAT (as UCSC web BLAT): where does "
-            "this sequence come from? Hits sorted by UCSC score, each with 0-based "
+            "this sequence come from? Hits sorted primary assembly first, then by UCSC score, each with 0-based "
             "half-open start/end + 1-based display, strand, identity %, query_coverage %, "
             "blocks (several blocks = spliced, e.g. cDNA across exons), alt_or_patch for hg38 "
             "alt/fix contigs (primary_total excludes them). `total`/`truncated` are honest. "

@@ -96,3 +96,11 @@ async def test_pcr_product_offers_the_gene_annotation_of_its_region(
     step = out["_meta"]["next_commands"][0]
     assert step["tool"] == "get_region_annotations"
     assert step["arguments"]["start"] == 3074846 and step["arguments"]["end"] == 3075093
+
+
+async def test_too_short_sequence_error_states_the_length_contract(facade: Any) -> None:
+    res = await _raw(facade, "find_blat_alignments", {"sequence": "ACGTACGT"})
+    env = res.structured_content
+    assert env["error_code"] == "invalid_input" and env["field"] == "sequence"
+    assert "20" in env["message"] and "expects a string" not in env["message"]
+    assert env["allowed_values"] == ["20..30000 characters"]

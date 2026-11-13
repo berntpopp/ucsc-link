@@ -323,7 +323,9 @@ class BlatService:
                 ],
                 out,
             )
-        hits = sorted(parse_psl(text), key=lambda h: (-h["score"], -h["identity"]))
+        hits = sorted(
+            parse_psl(text), key=lambda h: (h["alt_or_patch"], -h["score"], -h["identity"])
+        )
         for hit in hits:
             hit["browser_url"] = browser_url(db, hit["chrom"], hit["start"], hit["end"])
         payload: dict[str, Any] = {"assembly": db}
@@ -348,7 +350,7 @@ class BlatService:
                 [exe, f"-maxSize={max_product_size}", host, port, str(seq_dir), fwd, rev, str(out)],
                 out,
             )
-        products = parse_pcr_fasta(text)
+        products = sorted(parse_pcr_fasta(text), key=lambda p: p["alt_or_patch"])
         for product in products:
             product["browser_url"] = browser_url(
                 db, product["chrom"], product["start"], product["end"]
