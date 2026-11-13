@@ -71,6 +71,8 @@ _PRIMER = re.compile(rf"^[ACGTacgt]{{{MIN_PRIMER_BP},{MAX_PRIMER_BP}}}$")
 _PCR_HEADER = re.compile(r"^>(\S+):(\d+)([+-])(\d+) (\d+)bp ([ACGTacgt]+) ([ACGTacgt]+)$")
 _CHROM = re.compile(r"^[A-Za-z0-9_.]{1,64}$")
 _COMPLEMENT = str.maketrans("ACGTacgt", "TGCAtgca")
+#: hg38 alternate haplotypes / patches repeat primary-assembly loci (same gene, other copy).
+_ALT_SUFFIXES = ("_alt", "_fix")
 
 
 def _now() -> str:
@@ -150,6 +152,7 @@ def parse_psl(text: str) -> list[dict[str, Any]]:
                 "end": t_end,
                 "strand": cols[8],
                 "display": display(chrom, t_start, t_end),
+                "alt_or_patch": chrom.endswith(_ALT_SUFFIXES),
                 "score": match + rep // 2 - mis - q_ins - t_ins,
                 "identity": round(100 - milli_bad / 10, 1),
                 "query_start": q_start,
@@ -196,6 +199,7 @@ def parse_pcr_fasta(
                 "end": end,
                 "strand": strand,
                 "display": display(chrom, start, end),
+                "alt_or_patch": chrom.endswith(_ALT_SUFFIXES),
                 "size": size,
                 "forward_primer": {
                     "sequence": fwd,
@@ -287,6 +291,7 @@ class BlatService:
         payload.update(
             results=rows[:limit],
             total=len(rows),
+            primary_total=sum(not row["alt_or_patch"] for row in rows),
             returned=min(len(rows), limit),
             truncated=len(rows) > limit,
             coordinates="0-based half-open (display is 1-based)",

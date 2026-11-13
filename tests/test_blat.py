@@ -225,3 +225,30 @@ async def test_pcr_parses_recorded_products(tmp_path: pathlib.Path) -> None:
         "hg38", "ATGAAGGCCTTCGAGTCCCTCAAGTCCTTC", "CTCACGGTCGGTGCAGCGGC", 4000, 10
     )
     assert out["total"] == 1 and out["results"][0]["size"] == 247
+
+
+def test_alt_and_fix_contigs_are_flagged_and_excluded_from_primary_total() -> None:
+    text = (
+        ">chr1_GL383519v1_alt:41124+41373 250bp ATAGGGAATCATGGTTCCCC CATGCTCTTTGCCTCAGAGG\n"
+        + "ATAGGGAATCATGGTTCCCC"
+        + "A" * 210
+        + "CCTCTGAGGCAAAGAGCATG\n"
+        ">chr1:155236101+155236350 250bp ATAGGGAATCATGGTTCCCC CATGCTCTTTGCCTCAGAGG\n"
+        + "ATAGGGAATCATGGTTCCCC"
+        + "A" * 210
+        + "CCTCTGAGGCAAAGAGCATG\n"
+    )
+    alt, primary = parse_pcr_fasta(text)
+    assert alt["alt_or_patch"] is True and primary["alt_or_patch"] is False
+    row = "100\t0\t0\t0\t0\t0\t0\t0\t+\tq\t100\t0\t100\tchr17_KI270909v1_alt\t9\t0\t100\t1\t100,\t0,\t0,"
+    assert parse_psl(row)[0]["alt_or_patch"] is True
+
+
+async def test_payload_counts_products_on_the_primary_assembly(tmp_path: pathlib.Path) -> None:
+    fa = (FX / "hg38_htt_pcr.fa").read_text()
+    alt = fa.replace(">chr4:", ">chr4_GL000257v2_alt:")
+    settings = _layout(tmp_path, "exit 0", gf_pcr=f"cat > \"$7\" <<'EOF'\n{fa}{alt}EOF")
+    out = await BlatService(settings).pcr(
+        "hg38", "ATGAAGGCCTTCGAGTCCCTCAAGTCCTTC", "CTCACGGTCGGTGCAGCGGC", 4000, 10
+    )
+    assert out["total"] == 2 and out["primary_total"] == 1

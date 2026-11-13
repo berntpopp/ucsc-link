@@ -76,8 +76,9 @@ def register_blat_tools(mcp: FastMCP) -> None:
             "Align one DNA sequence to the genome with BLAT (as UCSC web BLAT): where does "
             "this sequence come from? Hits sorted by UCSC score, each with 0-based "
             "half-open start/end + 1-based display, strand, identity %, query_coverage %, "
-            "blocks (several blocks = spliced, e.g. cDNA across exons). `total`/`truncated` "
-            f"are honest. {_AVAILABILITY}"
+            "blocks (several blocks = spliced, e.g. cDNA across exons), alt_or_patch for hg38 "
+            "alt/fix contigs (primary_total excludes them). `total`/`truncated` are honest. "
+            f"{_AVAILABILITY}"
             "Signature: find_blat_alignments(sequence, assembly=, min_identity=, limit=)."
         ),
     )
@@ -134,8 +135,9 @@ def register_blat_tools(mcp: FastMCP) -> None:
             "In-silico PCR (as UCSC In-Silico PCR): every genomic product a primer pair "
             "amplifies up to max_product_size. Each product: location (0-based half-open + "
             "1-based display), size, strand, per-primer mismatch counts and the product "
-            f"sequence (first {MAX_PRODUCT_SEQUENCE_BP:,} bp; primers uppercase). total == 1 "
-            "means a single genomic product; total 0 means no product. Primers need >= 15 "
+            f"sequence (first {MAX_PRODUCT_SEQUENCE_BP:,} bp; primers uppercase). primary_total "
+            "counts products off alt/fix contigs (alt_or_patch=true repeats a primary locus): "
+            "primary_total == 1 is a single genomic product, 0 none. Primers need >= 15 "
             f"perfect 3' bases. {_AVAILABILITY}"
             "Signature: predict_pcr_products(forward_primer, reverse_primer, assembly=, "
             "max_product_size=, limit=)."

@@ -38,7 +38,7 @@ def test_gfserver_is_internal_hardened_and_reads_the_volume_only() -> None:
     assert server["entrypoint"][:5] == [
         "/opt/blat/bin/gfServer",
         "start",
-        "0.0.0.0",  # noqa: S104 - internal network only, never published
+        "0.0.0.0",  # internal network only, never published
         "8000",
         "-stepSize=5",
     ]
