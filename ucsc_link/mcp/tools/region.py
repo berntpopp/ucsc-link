@@ -35,6 +35,13 @@ TrackName = Literal[
     "encodeCcreCombined",
     "spliceVarDb",
     "varaico",
+    "mane",
+    "encBlacklist",
+    "grcExclusions",
+    "alldifficultregions",
+    "alllowmapandsegdupregions",
+    "simpleRepeat",
+    "cpgIslandExt",
 ]
 
 Assembly = Annotated[
@@ -198,9 +205,12 @@ def register_region_tools(mcp: FastMCP) -> None:
         tags={"region"},
         description=(
             "Return records of one allowlisted UCSC track overlapping a window "
-            "[start, end) on an explicit assembly: repeats (rmsk), segmental duplications "
-            "(genomicSuperDups), phyloP conservation, ENCODE cCREs, GENCODE/RefSeq "
-            "transcripts, SpliceVarDB/Varaico variants. Native UCSC fields are kept and "
+            "[start, end) on an explicit assembly: repeats (rmsk, simpleRepeat), segmental "
+            "duplications (genomicSuperDups), problematic regions (encBlacklist, "
+            "grcExclusions, GIAB difficult/low-mappability), phyloP, ENCODE cCREs, CpG "
+            "islands, MANE/GENCODE/RefSeq transcripts, SpliceVarDB/Varaico variants. An "
+            "empty problematic-region result means the window is not flagged. Native UCSC "
+            "fields are kept and "
             "each record gains a normalized `position`; transcripts also gain `exons` "
             "numbered in transcript order (strand-aware), segmental duplications an "
             "`other_position` for the partner copy. `total` is exact (null only past "
