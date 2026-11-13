@@ -26,6 +26,12 @@ CI) was lifted from `metadome-link`.
 
 - **Live API only, no data snapshot.** Some UCSC tracks carry use restrictions; nothing is
   stored beyond the in-process TTL cache in `api/client.py`.
+- **BLAT / isPcr are self-hosted** (`blat.py`, `blat_fetch.py`): UCSC's hgBlat/hgPcr are
+  behind a human check — never try to bypass it. Kent binaries + `.2bit` are fetched at
+  deploy time onto a volume, pinned by SHA-256 in `blat_fetch.PINS`, and never baked into
+  the image (Kent licence: non-commercial only). `gfClient`/`gfPcr` run as subprocesses with
+  argv lists, a timeout that kills the process group, and a concurrency semaphore. An
+  undeployed assembly is `upstream_unavailable`, never a fake empty result.
 - **Allowlist only.** Tracks come from `tracks.TRACKS`; the `TrackName` literal in
   `mcp/tools/region.py` must list the same names (guarded by `tests/test_tools.py`). Before
   adding a track, check `/list/tracks` (`protectedData` must be absent) and its description
@@ -66,7 +72,8 @@ once). **Never `gh release create`** — the workflow creates the immutable rele
 
 `make ci-local` green: format-check, lint-ci, lint-loc (≤500 lines/file), lint-readme,
 lint-surface, mypy `--strict`, tests. Unit tests are network-free: `respx` replays recorded
-UCSC responses from `tests/fixtures/ucsc/`. Live checks are opt-in
+UCSC responses from `tests/fixtures/ucsc/`; BLAT parsers replay recorded kent output from
+`tests/fixtures/blat/`. Live checks are opt-in
 (`make test-integration`, a handful of polite calls).
 
 ## Make targets
@@ -76,6 +83,7 @@ make install          # uv sync --group dev
 make ci-local         # the definition-of-done gate
 make test             # unit tests
 make test-integration # live UCSC calls (opt-in, rate-limited)
+make test-blat        # real Kent gfServer/gfClient/gfPcr on a tiny genome (CI runs it)
 make dev              # unified HTTP server on 127.0.0.1:8000
 make mcp-serve        # stdio MCP server
 make docker-up        # Docker stack; make docker-url prints the MCP URL

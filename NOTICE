@@ -1,0 +1,15 @@
+ucsc-link
+Copyright (c) ucsc-link contributors. Code licensed under the MIT licence (see LICENSE).
+
+Third-party software fetched at deploy time (not part of this repository or its image)
+--------------------------------------------------------------------------------------
+A deployment of ucsc-link may download the UCSC Kent BLAT tools (gfServer, gfClient,
+gfPcr) from https://hgdownload.soe.ucsc.edu/ (see docs/deployment.md). They are NOT
+distributed with ucsc-link and are NOT covered by its MIT licence. BLAT and its
+components are free for academic, non-profit and personal use; commercial use
+requires a licence from Kent Informatics (https://kentinformatics.com).
+
+Data
+----
+UCSC Genome Browser data (tracks, .2bit genomes) are subject to the UCSC Conditions of
+Use (https://genome.ucsc.edu/conditions.html) and each track provider's terms.
