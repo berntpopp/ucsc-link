@@ -60,6 +60,7 @@ Repository = "https://github.com/berntpopp/ucsc-link"
 [project.scripts]
 ucsc-link = "server:main"
 ucsc-link-mcp = "mcp_server:main"
+ucsc-link-blat-fetch = "ucsc_link.blat_fetch:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ucsc_link"]

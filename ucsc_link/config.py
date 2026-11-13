@@ -147,6 +147,41 @@ class UcscSettings(BaseModel):
     )
 
 
+class BlatSettings(BaseModel):
+    """Self-hosted BLAT / in-silico PCR (UCSC Kent gfServer) settings.
+
+    Empty ``servers`` means the feature is not deployed: the tools then answer
+    ``upstream_unavailable`` and capabilities/diagnostics say so.
+    """
+
+    servers: dict[Literal["hg38", "hg19"], str] = Field(
+        default_factory=dict,
+        description='Assembly -> gfServer "host:port", e.g. {"hg38": "ucsc-gfserver-hg38:8000"}.',
+    )
+    data_dir: str = Field(
+        default="/opt/blat",
+        description="Kent binaries in <data_dir>/bin, genomes as <data_dir>/<asm>/<asm>.2bit.",
+    )
+    timeout_s: FiniteFloat = Field(
+        default=60.0, gt=0, le=600, description="Wall-clock limit per gfClient/gfPcr run."
+    )
+    max_concurrency: StrictInt = Field(
+        default=2, ge=1, le=16, description="Concurrent gfClient/gfPcr subprocesses."
+    )
+    tmp_dir: str | None = Field(
+        default=None, description="Scratch dir for query/result files (default: TMPDIR)."
+    )
+
+    @field_validator("servers")
+    @classmethod
+    def validate_servers(cls, value: dict[str, str]) -> dict[str, str]:
+        """Require plain ``host:port`` endpoints."""
+        for endpoint in value.values():
+            if not re.fullmatch(r"[A-Za-z0-9.-]{1,253}:[0-9]{1,5}", endpoint):
+                raise ValueError('gfServer endpoint must be "host:port"')
+        return value
+
+
 class ServerSettings(BaseSettings):
     """Top-level server settings."""
 
@@ -198,6 +233,11 @@ class ServerSettings(BaseSettings):
     ucsc: UcscSettings = Field(
         default_factory=UcscSettings,
         description="Upstream UCSC JSON API client configuration.",
+    )
+
+    blat: BlatSettings = Field(
+        default_factory=BlatSettings,
+        description="Self-hosted BLAT / in-silico PCR (gfServer) configuration.",
     )
 
     @field_validator("ucsc", mode="before")
