@@ -138,7 +138,8 @@ def register_region_tools(mcp: FastMCP) -> None:
         description=(
             "Find where a gene or transcript lies on an assembly (UCSC position search "
             "over MANE, HGNC, GENCODE and RefSeq). Returns 0-based half-open start/end "
-            "plus a 1-based display string, ready for get_region_annotations. "
+            "plus a 1-based display string, ready for get_region_annotations. UCSC search "
+            "gives no strand: get_region_annotations(track='ncbiRefSeqSelect') does. "
             "Signature: search_genome(assembly, query, limit=)."
         ),
     )
@@ -174,7 +175,7 @@ def register_region_tools(mcp: FastMCP) -> None:
                     chrom=hit["chrom"],
                     start=hit["start"],
                     end=hit["end"],
-                    track="knownGene",
+                    track="ncbiRefSeqSelect",
                 )
                 for hit in payload["results"][:1]
                 if hit["end"] - hit["start"] <= MAX_FEATURE_WINDOW_BP
@@ -211,7 +212,8 @@ def register_region_tools(mcp: FastMCP) -> None:
             TrackName,
             Field(
                 description="UCSC track name from list_tracks. phyloP is phyloP100way on "
-                "hg38 and phyloP100wayAll on hg19; cCREregistry/spliceVarDb are hg38-only.",
+                "hg38 and phyloP100wayAll on hg19 (either name works on both); "
+                "cCREregistry/encodeCcreCombined/spliceVarDb are hg38-only.",
                 examples=["rmsk"],
             ),
         ],

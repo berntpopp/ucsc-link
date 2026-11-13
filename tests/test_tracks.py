@@ -29,9 +29,9 @@ def test_unknown_assembly_is_invalid_input() -> None:
 
 def test_track_missing_on_assembly_names_the_alternatives() -> None:
     with pytest.raises(InvalidInputError) as info:
-        track_for("hg19", "phyloP100way")
-    assert "phyloP100wayAll" in info.value.extra["allowed_values"]
-    assert "phyloP100wayAll" in info.value.message
+        track_for("hg19", "spliceVarDb")
+    assert "varaico" in info.value.extra["allowed_values"]
+    assert "spliceVarDb" not in info.value.extra["allowed_values"]
 
 
 def test_non_allowlisted_track_is_rejected() -> None:
@@ -57,3 +57,13 @@ def test_display_converts_half_open_zero_based_to_one_based_closed() -> None:
     assert display("chr4", 3074876, 3074940) == "chr4:3,074,877-3,074,940"
     # A single base at 0-based 0 is base 1.
     assert display("chr1", 0, 1) == "chr1:1-1"
+
+
+@pytest.mark.parametrize(
+    ("assembly", "requested", "served"),
+    [("hg19", "phyloP100way", "phyloP100wayAll"), ("hg38", "phyloP100wayAll", "phyloP100way")],
+)
+def test_phylop_name_resolves_to_the_assembly_specific_track(
+    assembly: str, requested: str, served: str
+) -> None:
+    assert track_for(assembly, requested).track == served  # type: ignore[arg-type]

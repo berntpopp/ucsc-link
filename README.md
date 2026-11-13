@@ -91,7 +91,8 @@ phyloP and ENCODE are freely usable with attribution.
 labelled `non_commercial: true`; they are served as source-attributed context with link-outs,
 and public hosting here does not grant redistribution rights. hg38-only: `spliceVarDb`,
 `cCREregistry`, `encodeCcreCombined`; phyloP is `phyloP100way` on hg38 and `phyloP100wayAll`
-on hg19.
+on hg19 (either name is accepted on both). Search results carry no strand; query
+`ncbiRefSeqSelect` over the gene for it.
 
 **Rate limit — the two UCSC rules disagree.** The API help recommends at most **1 request per
 second** ("no strict limit"); the general [Conditions of Use](https://genome.ucsc.edu/conditions.html)

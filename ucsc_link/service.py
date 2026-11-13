@@ -196,6 +196,8 @@ class UcscService:
         """Records of one allowlisted track overlapping ``[start, end)``."""
         db, payload = self._assembly_fields(assembly)
         spec = track_for(db, track)
+        if spec.track != track:
+            payload["track_requested"] = track
         region = await self._region(db, chrom, start, end, spec.max_window_bp)
         data = await self.client.get_json(
             "/getData/track",

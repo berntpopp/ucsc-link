@@ -187,3 +187,12 @@ async def test_fenced_object_count_stays_within_v1_1_limit(
     assert 0 < fenced <= 128
     assert out["truncated"] is True and out["total"] == 60
     assert out["truncation_reason"] == "untrusted_text_limit"
+
+
+async def test_phylop_alias_is_disclosed(
+    ucsc_service: UcscService, mocked_ucsc: respx.MockRouter
+) -> None:
+    out = await ucsc_service.region_annotations(
+        "hg38", "chr1", 155234000, 155234050, "phyloP100wayAll", 100
+    )
+    assert out["track_requested"] == "phyloP100wayAll" and out["track"]["track"] == "phyloP100way"

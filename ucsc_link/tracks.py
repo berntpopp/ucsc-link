@@ -122,7 +122,7 @@ TRACKS: dict[str, TrackSpec] = {
             {"hg38": "Cons 100 Verts (phyloP100way)"},
             "UCSC multiz100way / PHAST phyloP",
             OPEN_TERMS,
-            note="hg38 name; on hg19 the same track is phyloP100wayAll.",
+            note="hg38 name; on hg19 the same track is phyloP100wayAll (either name is accepted).",
         ),
         TrackSpec(
             "phyloP100wayAll",
@@ -132,7 +132,7 @@ TRACKS: dict[str, TrackSpec] = {
             {"hg19": "100 Vert. Cons (phyloP100wayAll)"},
             "UCSC multiz100way / PHAST phyloP",
             OPEN_TERMS,
-            note="hg19 name; on hg38 the same track is phyloP100way.",
+            note="hg19 name; on hg38 the same track is phyloP100way (either name is accepted).",
         ),
         TrackSpec(
             "cCREregistry",
@@ -203,9 +203,16 @@ def resolve_assembly(value: str) -> Assembly:
         ) from None
 
 
+#: Same conservation track, assembly-specific UCSC names: accept either on both.
+TRACK_ALIASES: dict[tuple[str, str], str] = {
+    ("hg19", "phyloP100way"): "phyloP100wayAll",
+    ("hg38", "phyloP100wayAll"): "phyloP100way",
+}
+
+
 def track_for(assembly: Assembly, track: str) -> TrackSpec:
     """Return the allowlisted spec, or an invalid_input naming this assembly's tracks."""
-    spec = TRACKS.get(track)
+    spec = TRACKS.get(TRACK_ALIASES.get((assembly, track), track))
     if spec is None or assembly not in spec.assemblies:
         available = [name for name, s in TRACKS.items() if assembly in s.assemblies]
         hint = f" {spec.note}" if spec is not None and spec.note else ""

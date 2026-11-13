@@ -69,10 +69,19 @@ async def test_unknown_argument_names_the_valid_ones(facade: Any) -> None:
 
 async def test_track_not_on_assembly_lists_alternatives(facade: Any) -> None:
     res = await _raw(
-        facade, "get_region_annotations", {**HTT, "assembly": "hg19", "track": "phyloP100way"}
+        facade, "get_region_annotations", {**HTT, "assembly": "hg19", "track": "cCREregistry"}
     )
     assert res.is_error is True
     assert "phyloP100wayAll" in res.structured_content["allowed_values"]
+
+
+async def test_search_next_step_uses_refseq_select_to_reveal_strand(
+    facade: Any, call_tool: Any
+) -> None:
+    out = await call_tool(facade, "search_genome", {"assembly": "hg38", "query": "BRCA1"})
+    step = out["_meta"]["next_commands"][0]
+    assert step["tool"] == "get_region_annotations"
+    assert step["arguments"]["track"] == "ncbiRefSeqSelect"
 
 
 async def test_reference_sequence_tool(facade: Any, call_tool: Any) -> None:
