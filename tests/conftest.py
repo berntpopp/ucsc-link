@@ -48,6 +48,7 @@ def _track_route(request: httpx.Request) -> httpx.Response:
         ("hg38", "varaico"): "track_hg38_varaico_brca1",
         ("hg38", "spliceVarDb"): "track_hg38_spliceVarDb_brca1",
         ("hg38", "cCREregistry"): "track_hg38_cCREregistry_shh",
+        ("hg38", "ncbiRefSeqSelect"): "track_hg38_ncbiRefSeqSelect_brca1",
     }
     name = table.get(key)
     if name is None:

@@ -197,3 +197,38 @@ async def test_phylop_alias_is_disclosed(
         "hg38", "chr1", 155234000, 155234050, "phyloP100wayAll", 100
     )
     assert out["track_requested"] == "phyloP100wayAll" and out["track"]["track"] == "phyloP100way"
+
+
+async def test_gene_records_gain_strand_aware_exons(ucsc_service: UcscService) -> None:
+    out = await ucsc_service.region_annotations(
+        "hg38", "chr17", 43044294, 43125364, "ncbiRefSeqSelect", 10
+    )
+    record = out["results"][0]
+    exons = record["exons"]
+    assert len(exons) == record["exonCount"] == 23
+    # Minus strand: exon 1 is the highest-coordinate exon (transcript 5' end).
+    assert exons[0] == {"exon": 1, "start": 43125270, "end": 43125364}
+    assert exons[1] == {"exon": 2, "start": 43124016, "end": 43124115}
+    assert exons[-1] == {"exon": 23, "start": 43044294, "end": 43045802}
+    assert isinstance(record["exonStarts"], str)  # native field kept
+
+
+async def test_segdup_partner_gets_a_normalized_position(ucsc_service: UcscService) -> None:
+    out = await ucsc_service.region_annotations(
+        "hg38", "chr1", 155234000, 155234050, "genomicSuperDups", 10
+    )
+    record = out["results"][0]
+    assert record["other_position"] == {
+        "chrom": record["otherChrom"],
+        "start": record["otherStart"],
+        "end": record["otherEnd"],
+        "display": f"{record['otherChrom']}:{record['otherStart'] + 1:,}-{record['otherEnd']:,}",
+    }
+
+
+async def test_search_ranks_exact_symbol_matches_first(ucsc_service: UcscService) -> None:
+    out = await ucsc_service.search_genome("hg38", "brca1", 50)
+    labels = [r["label"]["text"].split(" (")[0] for r in out["results"]]
+    exact = out["exact_matches"]
+    assert exact >= 2 and all(label == "BRCA1" for label in labels[:exact])
+    assert "BARD1" in labels[exact:]

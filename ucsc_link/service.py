@@ -86,11 +86,36 @@ def _record_position(record: dict[str, Any], fallback_chrom: str) -> dict[str, A
     return None
 
 
+def _exons(record: dict[str, Any]) -> list[dict[str, int]] | None:
+    """genePred exonStarts/exonEnds strings as exons numbered in transcript order."""
+    try:
+        starts = [int(x) for x in str(record["exonStarts"]).split(",") if x]
+        ends = [int(x) for x in str(record["exonEnds"]).split(",") if x]
+    except KeyError, ValueError:
+        return None
+    if not starts or len(starts) != len(ends):
+        return None
+    pairs = list(zip(starts, ends, strict=True))
+    if record.get("strand") == "-":
+        pairs.reverse()  # exon 1 is the transcript's 5' end
+    return [{"exon": n, "start": s, "end": e} for n, (s, e) in enumerate(pairs, 1)]
+
+
 def _shape_record(
     spec: TrackSpec, assembly: str, raw: dict[str, Any], chrom: str
 ) -> dict[str, Any]:
     record = {k: v for k, v in raw.items() if k not in spec.drop_fields}
     position = _record_position(record, chrom)
+    if "exonStarts" in record and (exons := _exons(record)) is not None:
+        record["exons"] = exons
+    other = (record.get("otherChrom"), record.get("otherStart"), record.get("otherEnd"))
+    if isinstance(other[0], str) and isinstance(other[1], int) and isinstance(other[2], int):
+        record["other_position"] = {
+            "chrom": other[0],
+            "start": other[1],
+            "end": other[2],
+            "display": display(other[0], other[1], other[2]),
+        }
     record_id = f"{assembly}:{spec.track}:{record.get('name') or (position or {}).get('display')}"
     for key in spec.prose_fields:
         if isinstance(record.get(key), str) and record[key]:
@@ -281,6 +306,8 @@ class UcscService:
             raise InvalidInputError("query must be a non-empty gene symbol or term.", field="query")
         data = await self.client.get_json("/search", {"search": term, "genome": db})
         hits: list[dict[str, Any]] = []
+        exact: set[int] = set()
+        wanted = term.upper()
         seen: set[tuple[str, str, int, int]] = set()
         for group in data.get("positionMatches") or []:
             track = group.get("trackName") if isinstance(group, dict) else None
@@ -294,10 +321,16 @@ class UcscService:
                 if key not in seen:
                     seen.add(key)
                     hits.append(hit)
-        hits.sort(key=lambda h: SEARCH_TRACKS.index(h["track"]))
+                    symbol = str(match.get("posName") or "").split(" (")[0]
+                    hit_id = str(hit.get("id", ""))
+                    if wanted in {symbol.upper(), hit_id.upper(), hit_id.split(".")[0].upper()}:
+                        exact.add(id(hit))
+        # Exact symbol/accession hits first, then UCSC's looser text matches.
+        hits.sort(key=lambda h: (id(h) not in exact, SEARCH_TRACKS.index(h["track"])))
         results = hits[:limit]
         payload.update(
             results=results,
+            exact_matches=len(exact),
             total=len(hits),
             returned=len(results),
             truncated=len(hits) > len(results),
