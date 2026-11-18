@@ -4,4 +4,4 @@ from __future__ import annotations
 
 from mcp.types import ToolAnnotations
 
-READ_ONLY_OPEN_WORLD = ToolAnnotations(readOnlyHint=True, openWorldHint=True)
+READ_ONLY_OPEN_WORLD = ToolAnnotations(read_only_hint=True, open_world_hint=True)

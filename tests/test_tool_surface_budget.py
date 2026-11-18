@@ -36,7 +36,7 @@ from surface import (
 async def test_no_tool_publishes_output_schema(facade: Any) -> None:
     async with Client(facade) as client:
         tools = await client.list_tools()
-    assert tools and all(t.outputSchema is None for t in tools)
+    assert tools and all(t.output_schema is None for t in tools)
 
 
 async def test_tool_surface_within_budget(facade: Any) -> None:

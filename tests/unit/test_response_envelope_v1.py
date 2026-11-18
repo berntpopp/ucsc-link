@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
 
 from ucsc_link.exceptions import NotFoundError
 from ucsc_link.mcp.envelope import McpErrorContext, run_mcp_tool

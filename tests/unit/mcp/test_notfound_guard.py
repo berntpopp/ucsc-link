@@ -39,7 +39,7 @@ from fastmcp import Client
 from fastmcp.exceptions import ResourceError
 from mcp.shared.memory import create_client_server_memory_streams
 from mcp.shared.message import SessionMessage
-from mcp.types import INVALID_PARAMS, JSONRPCMessage, JSONRPCRequest
+from mcp.types import INVALID_PARAMS, JSONRPCRequest
 
 from ucsc_link.mcp._sanitize import FORBIDDEN_CODEPOINTS
 from ucsc_link.mcp.facade import create_ucsc_mcp
@@ -262,28 +262,40 @@ async def _raw_read_resource_error(
             async with anyio.create_task_group() as task_group:
 
                 async def _run() -> None:
+                    # SDK 2 dropped ``run(stateless=True)``: do the legacy handshake below.
                     await low_level.run(
                         server_read,
                         server_write,
                         init_options,
-                        stateless=True,  # start Initialized: skip the handshake
                         raise_exceptions=False,
                     )
 
                 task_group.start_soon(_run)
+                init = JSONRPCRequest(
+                    jsonrpc="2.0",
+                    id=0,
+                    method="initialize",
+                    params={
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {"name": "probe", "version": "0"},
+                    },
+                )
+                await client_write.send(SessionMessage(message=init))
                 request = JSONRPCRequest(
                     jsonrpc="2.0",
                     id=1,
                     method="resources/read",
                     params={"uri": uri},
                 )
-                await client_write.send(SessionMessage(message=JSONRPCMessage(request)))
                 with anyio.fail_after(5):
+                    await client_read.receive()  # initialize result
+                    await client_write.send(SessionMessage(message=request))
                     for _ in range(8):
                         message = await client_read.receive()
                         if isinstance(message, Exception):
                             raise message
-                        candidate = message.message.root
+                        candidate = message.message  # SDK 2: JSONRPCMessage is a plain union
                         if isinstance(candidate, mcp_types.JSONRPCError):
                             root = candidate
                             break

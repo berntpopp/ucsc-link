@@ -42,6 +42,8 @@ def configure_stdlib_logging() -> None:
     for name, level in {
         "httpx": "WARNING",
         "httpcore": "WARNING",
+        "httpx2": "WARNING",  # FastMCP 4 HTTP stack
+        "httpcore2": "WARNING",
         "uvicorn.access": "INFO" if is_debug else "WARNING",
         "uvicorn.error": "INFO",
         "fastmcp": "INFO" if is_debug else "WARNING",
