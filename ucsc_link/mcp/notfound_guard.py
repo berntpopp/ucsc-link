@@ -1,6 +1,6 @@
 """FastMCP-core not-found reflection guard (Response-Envelope v1.1 fast-follow).
 
-FastMCP core (pinned ``>=3.4.4,<4.0.0``) reflects the caller's OWN requested tool
+FastMCP core (pinned ``>=4.2.2,<5.0.0``) reflects the caller's OWN requested tool
 name / resource URI / prompt name back to the caller (and to logs) BEFORE any
 backend middleware runs. This module closes that residual with fixed, input-free
 messages built from CONSTANTS only, mirroring the ratified fleet references
@@ -61,14 +61,16 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, cast
+from typing import Any
 
 import mcp.types
 from fastmcp.exceptions import NotFoundError as FastMCPNotFoundError
 from fastmcp.exceptions import ResourceError
 from fastmcp.server.middleware.middleware import CallNext, Middleware, MiddlewareContext
-from fastmcp.tools.tool import ToolResult
+from fastmcp.tools import ToolResult
+from mcp.shared.exceptions import MCPError
 from mcp.types import TextContent
+from mcp_types import INVALID_PARAMS, METHOD_NOT_FOUND
 
 from ucsc_link.mcp.next_commands import cmd
 
@@ -194,10 +196,6 @@ class NotFoundGuard(Middleware):
 # ---------------------------------------------------------------------------
 
 
-class ProtocolError(Exception):
-    """A dispatch-level failure re-raised with a FIXED, input-free message."""
-
-
 def _is_structured_envelope(call_result: mcp.types.CallToolResult) -> bool:
     """True if an ``isError`` result carries one of OUR JSON envelopes.
 
@@ -217,16 +215,24 @@ def _is_structured_envelope(call_result: mcp.types.CallToolResult) -> bool:
     return isinstance(obj, dict) and "error_code" in obj
 
 
-def _fixed_tool_not_found_server_result() -> mcp.types.ServerResult:
-    """A fixed, input-free ServerResult for an unknown/failed tool dispatch."""
+def _fixed_tool_not_found_result() -> mcp.types.CallToolResult:
+    """A fixed, input-free CallToolResult for an unknown/failed tool dispatch."""
     envelope = unknown_tool_envelope()
-    return mcp.types.ServerResult(
-        mcp.types.CallToolResult(
-            content=[mcp.types.TextContent(type="text", text=_envelope_json(envelope))],
-            structuredContent=envelope,
-            isError=True,
-        )
+    return mcp.types.CallToolResult(
+        content=[mcp.types.TextContent(type="text", text=_envelope_json(envelope))],
+        structured_content=envelope,
+        is_error=True,
     )
+
+
+async def _strip_method_not_found_data(ctx: Any, call_next: Any) -> Any:
+    """Drop the caller-supplied method name SDK 2 puts in METHOD_NOT_FOUND ``data``."""
+    try:
+        return await call_next(ctx)
+    except MCPError as exc:
+        if exc.error.code == METHOD_NOT_FOUND and exc.error.data is not None:
+            raise MCPError(code=METHOD_NOT_FOUND, message="Method not found") from None
+        raise
 
 
 def install_protocol_error_handler(mcp_server: Any) -> None:
@@ -236,58 +242,60 @@ def install_protocol_error_handler(mcp_server: Any) -> None:
     exist) and AFTER any other request-handler wrappers so this is the outermost
     wrapper on the raw handlers.
     """
-    handlers = mcp_server._mcp_server.request_handlers
+    lowlevel = mcp_server._mcp_server
+    # Outermost: MCP SDK 2 echoes an unknown JSON-RPC method name in METHOD_NOT_FOUND ``data``.
+    lowlevel.middleware.insert(0, _strip_method_not_found_data)
 
-    call_tool = handlers.get(mcp.types.CallToolRequest)
+    call_tool = lowlevel.get_request_handler("tools/call")
     if call_tool is not None:
 
         async def wrapped_call_tool(
-            request: mcp.types.CallToolRequest,
+            ctx: Any,
+            params: Any,
             *,
-            _orig: Any = call_tool,
-        ) -> mcp.types.ServerResult:
+            _orig: Any = call_tool.handler,
+        ) -> Any:
             try:
-                result = cast(mcp.types.ServerResult, await _orig(request))
+                result = await _orig(ctx, params)
             except FastMCPNotFoundError:
                 # Unknown-tool *raise* drift (should not reach here once Layer 1
                 # is active) -- answer with the fixed name-free envelope.
-                return _fixed_tool_not_found_server_result()
+                return _fixed_tool_not_found_result()
             # FastMCP *returns* an isError CallToolResult with a raw plain-text
             # message ("Unknown tool: '<name>'") for an unknown tool; replace any
             # isError result that is NOT one of our structured envelopes.
-            root = getattr(result, "root", None)
             if (
-                isinstance(root, mcp.types.CallToolResult)
-                and root.isError
-                and not _is_structured_envelope(root)
+                isinstance(result, mcp.types.CallToolResult)
+                and result.is_error
+                and not _is_structured_envelope(result)
             ):
-                return _fixed_tool_not_found_server_result()
+                return _fixed_tool_not_found_result()
             return result
 
-        handlers[mcp.types.CallToolRequest] = wrapped_call_tool
+        lowlevel.add_request_handler("tools/call", call_tool.params_type, wrapped_call_tool)
 
-    for request_type, message in (
-        (mcp.types.ReadResourceRequest, _UNKNOWN_RESOURCE_MESSAGE),
-        (mcp.types.GetPromptRequest, _UNKNOWN_PROMPT_MESSAGE),
+    for method, message in (
+        ("resources/read", _UNKNOWN_RESOURCE_MESSAGE),
+        ("prompts/get", _UNKNOWN_PROMPT_MESSAGE),
     ):
-        orig = handlers.get(request_type)
-        if orig is None:
+        entry = lowlevel.get_request_handler(method)
+        if entry is None:
             continue
 
         async def wrapped(
-            request: Any,
+            ctx: Any,
+            params: Any,
             *,
-            _orig: Any = orig,
+            _orig: Any = entry.handler,
             _message: str = message,
         ) -> Any:
             try:
-                return await _orig(request)
+                return await _orig(ctx, params)
             except Exception:
-                # Re-raise with a FIXED, input-free message so no requested
-                # name/URI (or its code points) reaches the JSON-RPC error frame.
-                raise ProtocolError(_message) from None
+                # FIXED, input-free message; MCPError keeps -32602 (SDK 2 sends plain errors as 0).
+                raise MCPError(code=INVALID_PARAMS, message=_message) from None
 
-        handlers[request_type] = wrapped
+        lowlevel.add_request_handler(method, entry.params_type, wrapped)
 
 
 # ---------------------------------------------------------------------------
@@ -309,6 +317,11 @@ _SCRUB_MARKERS: tuple[str, ...] = (
     "Failed to validate request",
     "Failed to validate notification",
     "Message that failed validation",
+    # MCP SDK 2 ``mcp.server.runner``: echo the caller-chosen method / pre-request frame.
+    "dropped %r",
+    "dropped %s",
+    "dropped a frame",
+    "no handler for notification",
 )
 
 # The source loggers on which those records are CREATED. A logging filter runs
@@ -326,6 +339,7 @@ _SCRUB_LOGGERS: tuple[str, ...] = (
     "fastmcp.server.mixins.mcp_operations",
     "mcp",
     "mcp.server.lowlevel.server",
+    "mcp.server.runner",  # SDK 2 dispatch: "dropped %r" / "no handler for notification %s"
 )
 
 _SCRUBBED_MESSAGE = "MCP request rejected (details omitted)."
