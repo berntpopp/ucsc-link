@@ -69,3 +69,6 @@ def test_release_compose_files_carry_no_blat_services() -> None:
 def test_image_prepares_the_volume_mount_point_for_the_app_user() -> None:
     text = (ROOT / "docker" / "Dockerfile").read_text(encoding="utf-8")
     assert "install -d -o app -g app -m 0755 /opt/blat" in text
+    # gfServer's working_dir: if absent from the fresh volume, Docker creates it root-owned
+    # and ucsc-blat-fetch (uid 10001) cannot write hg38.2bit into it.
+    assert "install -d -o app -g app -m 0755 /opt/blat /opt/blat/hg38" in text

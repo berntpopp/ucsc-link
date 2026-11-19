@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-19
+
+### Fixed
+
+- Deploy: the image pre-creates `/opt/blat/hg38` (gfServer's `working_dir`) owned by uid 10001, so `ucsc-blat-fetch` can write `hg38.2bit` on a fresh `ucsc-blat` volume instead of failing with `Permission denied` on a root-owned directory Docker created.
+
 ## [0.5.0] - 2026-11-19
 
 ### Added
