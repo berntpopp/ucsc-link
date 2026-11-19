@@ -73,8 +73,9 @@ def register_blat_tools(mcp: FastMCP) -> None:
         output_schema=None,
         tags={"sequence", "blat"},
         description=(
-            "Align one DNA sequence to the genome with BLAT (as UCSC web BLAT): where does "
-            "this sequence come from? Hits sorted primary assembly first, then by UCSC score, each with 0-based "
+            "Return the genomic alignments of one DNA sequence (BLAT, as UCSC web BLAT), i.e. "
+            "where the sequence comes from. Hits sorted primary assembly first, then by UCSC "
+            "score, each with 0-based "
             "half-open start/end + 1-based display, strand, identity %, query_coverage %, "
             "blocks (several blocks = spliced, e.g. cDNA across exons), alt_or_patch for hg38 "
             "alt/fix contigs (primary_total excludes them). `total`/`truncated` are honest. "
@@ -132,8 +133,8 @@ def register_blat_tools(mcp: FastMCP) -> None:
         output_schema=None,
         tags={"sequence", "pcr"},
         description=(
-            "In-silico PCR (as UCSC In-Silico PCR): every genomic product a primer pair "
-            "amplifies up to max_product_size. Each product: location (0-based half-open + "
+            "Predict every genomic product a primer pair amplifies up to max_product_size "
+            "(in-silico PCR, as UCSC In-Silico PCR). Each product: location (0-based half-open + "
             "1-based display), size, strand, per-primer mismatch counts and the product "
             f"sequence (first {MAX_PRODUCT_SEQUENCE_BP:,} bp; primers uppercase). primary_total "
             "counts products off alt/fix contigs (alt_or_patch=true repeats a primary locus): "

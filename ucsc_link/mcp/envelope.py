@@ -206,6 +206,13 @@ def _new_meta(tool_name: str) -> dict[str, Any]:
     }
 
 
+def _with_field_errors(envelope: dict[str, Any]) -> dict[str, Any]:
+    """Name the offending argument in the fleet's ``field_errors`` list (invalid_input only)."""
+    if envelope["error_code"] == "invalid_input" and envelope.get("field"):
+        envelope["field_errors"] = [{"field": envelope["field"], "reason": envelope["message"]}]
+    return envelope
+
+
 def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, Any]:
     error_code, message = _classify(exc)
 
@@ -239,7 +246,7 @@ def _error_envelope(exc: BaseException, context: McpErrorContext) -> dict[str, A
         envelope["_meta"]["next_commands"] = default_error_next_commands(
             context.tool_name, error_code, context.arguments
         )
-    return envelope
+    return _with_field_errors(envelope)
 
 
 def build_arg_error_envelope(
@@ -268,17 +275,19 @@ def build_arg_error_envelope(
         message = f"Invalid value for argument `{loc}` of {tool_name}: {human}."
         meta = _new_meta(tool_name)
         meta["next_commands"] = [cmd("get_server_capabilities")]
-        return {
-            "success": False,
-            "error_code": "invalid_input",
-            "message": sanitize_message(message),
-            "retryable": False,
-            "recovery_action": "reformulate_input",
-            "field": loc,
-            "allowed_values": allowed,
-            "hint": signature,
-            "_meta": meta,
-        }
+        return _with_field_errors(
+            {
+                "success": False,
+                "error_code": "invalid_input",
+                "message": sanitize_message(message),
+                "retryable": False,
+                "recovery_action": "reformulate_input",
+                "field": loc,
+                "allowed_values": allowed,
+                "hint": signature,
+                "_meta": meta,
+            }
+        )
     if error_type in ("missing", "missing_argument"):
         head = f"Missing required argument `{loc}` for {tool_name}."
     elif error_type == "unexpected_keyword_argument":
@@ -289,17 +298,19 @@ def build_arg_error_envelope(
     message = f"{head}{dym} Valid argument names are listed in allowed_values."
     meta = _new_meta(tool_name)
     meta["next_commands"] = [cmd("get_server_capabilities")]
-    return {
-        "success": False,
-        "error_code": "invalid_input",
-        "message": sanitize_message(message),
-        "retryable": False,
-        "recovery_action": "reformulate_input",
-        "field": loc,
-        "allowed_values": valid_params,
-        "hint": signature,
-        "_meta": meta,
-    }
+    return _with_field_errors(
+        {
+            "success": False,
+            "error_code": "invalid_input",
+            "message": sanitize_message(message),
+            "retryable": False,
+            "recovery_action": "reformulate_input",
+            "field": loc,
+            "allowed_values": valid_params,
+            "hint": signature,
+            "_meta": meta,
+        }
+    )
 
 
 def _stamp_capabilities_version(meta: dict[str, Any]) -> None:

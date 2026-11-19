@@ -146,8 +146,10 @@ def register_region_tools(mcp: FastMCP) -> None:
             "Find where a gene or transcript lies on an assembly (UCSC position search "
             "over MANE, HGNC, GENCODE and RefSeq). Returns 0-based half-open start/end "
             "plus a 1-based display string, ready for get_region_annotations. Exact "
-            "symbol/accession hits come first (`exact_matches` counts them), then UCSC's "
-            "looser text matches. UCSC search gives no strand: "
+            "symbol/accession hits come first (`exact_matches` counts them, each hit has "
+            "`exact`), then UCSC's looser text matches on gene descriptions, which are weak: "
+            "a disease name is not a gene lookup (resolve it with mondo_resolve_disease). "
+            "UCSC search gives no strand: "
             "get_region_annotations(track='ncbiRefSeqSelect') does. "
             "Signature: search_genome(assembly, query, limit=)."
         ),
@@ -191,6 +193,11 @@ def register_region_tools(mcp: FastMCP) -> None:
                 for hit in payload["results"][:1]
                 if hit["end"] - hit["start"] <= MAX_FEATURE_WINDOW_BP
             ]
+            if not payload["exact_matches"]:  # weak or no hits: route to the fleet resolvers
+                steps = [
+                    cmd("hgnc_resolve_symbol", query=query),
+                    cmd("mondo_resolve_disease", query=query),
+                ]
             payload["_meta"] = {"next_commands": steps or [cmd("list_tracks")]}
             return payload
 

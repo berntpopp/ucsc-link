@@ -339,6 +339,16 @@ class UcscService:
         # Exact symbol/accession hits first, then UCSC's looser text matches.
         hits.sort(key=lambda h: (id(h) not in exact, SEARCH_TRACKS.index(h["track"])))
         results = hits[:limit]
+        for hit in results:
+            hit["exact"] = id(hit) in exact
+        if not exact:
+            # Loose matches hit gene *descriptions* (a disease name finds genes whose prose
+            # mentions it, not the causal gene); say so instead of looking like an answer.
+            payload["note"] = (
+                "No gene symbol or accession matches the query exactly; any results are loose "
+                "text matches on gene descriptions and are weak candidates. For a disease or "
+                "phenotype name resolve the disease first; for a gene, check the symbol."
+            )
         payload.update(
             results=results,
             exact_matches=len(exact),

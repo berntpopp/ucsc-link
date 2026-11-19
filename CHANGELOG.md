@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-19
+
+### Added
+
+- `search_genome`: every hit carries `exact`; with no exact symbol/accession match the result
+  says so in `note` (loose matches hit gene descriptions, so a disease name such as "cystic
+  fibrosis" returned GUCY2C first) and `next_commands` route to `hgnc_resolve_symbol` and
+  `mondo_resolve_disease` instead of annotating a weak hit.
+- `invalid_input` errors carry `field_errors` (`[{field, reason}]`) next to `field`.
+- Guard tests: hint targets name real tools/arguments; backticked description fields are
+  returned; description lead (rule D1, Tool-Schema Documentation v1.1) checked strict.
+
+### Changed
+
+- `find_blat_alignments` / `predict_pcr_products` descriptions now lead with what they return
+  (D1). `scripts/surface.py` re-vendored from genefoundry-router v0.13.1.
+
 ## [0.4.0] - 2026-11-18
 
 ### Changed
