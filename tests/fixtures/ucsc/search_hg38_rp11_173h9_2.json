@@ -1,0 +1,39 @@
+{
+ "downloadTime": "2026:11:20T15:36:04Z",
+ "downloadTimeStamp": 1795188964,
+ "genome": "hg38",
+ "positionMatches": [
+  {
+   "name": "wgEncodeGencodeBasicV38",
+   "trackName": "wgEncodeGencodeBasicV38",
+   "description": "Basic Gene Annotation Set from GENCODE Version 38 (Ensembl 104)",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr2:152450162-152452891",
+     "extraSel": "wgEncodeGencodeBasicV38_sel=1&wgEncodeGencodeV38ViewGenes_sel=1&",
+     "hgFindMatches": "RP11%2D173H9.2",
+     "posName": "RP11-173H9.2",
+     "highlight": null,
+     "canonical": false
+    }
+   ]
+  },
+  {
+   "name": "wgEncodeGencodeCompV38",
+   "trackName": "wgEncodeGencodeCompV38",
+   "description": "Comprehensive Gene Annotation Set from GENCODE Version 38 (Ensembl 104)",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr2:152450162-152452891",
+     "extraSel": "wgEncodeGencodeCompV38_sel=1&wgEncodeGencodeV38ViewGenes_sel=1&",
+     "hgFindMatches": "RP11%2D173H9.2",
+     "posName": "RP11-173H9.2",
+     "highlight": null,
+     "canonical": false
+    }
+   ]
+  }
+ ]
+}

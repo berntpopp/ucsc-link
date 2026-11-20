@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-20
+
+### Added
+
+- `search_genome` also reads UCSC's matches on fallback gene tracks, after the curated ones:
+  `ncbiRefSeqPredicted` (hg38; NCBI `LOC…` ids such as `LOC124909477`) and GENCODE V38 Basic
+  (`wgEncodeGencodeBasicV38` on hg38, `wgEncodeGencodeBasicV38lift37` on hg19; legacy
+  clone-based names such as `RP11-173H9.2`). UCSC already returned these matches; the
+  curated-track filter dropped them, so the search answered with an empty result
+  (genefoundry-router#351).
+- When no curated track knows the name, fallback hits that name the query gain `gene`,
+  `strand`, `transcripts` and `has_cds` from their own track (at most two extra upstream
+  calls per search; one call covers all transcript variants of a gene). `has_cds` describes
+  that track's transcripts of the gene only and is not a gene biotype; `note` says so
+  whenever the field is present. If the detail call fails, the hit is returned without
+  these fields.
+- Fallback hits are dropped when a curated track has an exact hit, so results and counts
+  for genes the curated tracks know are unchanged.
+- After a GENCODE fallback hit `next_commands` suggests
+  `get_region_annotations(track='knownGene')`, which shows the same transcript; after a
+  predicted-RefSeq hit no region step is suggested (no allowlisted track shows the record).
+- `searched_tracks` lists the fallback tracks of the assembly; `get_server_capabilities`
+  lists them as `fallback_search_tracks`. Tool names, descriptions and input schemas are
+  unchanged.
+
 ## [0.5.1] - 2026-11-19
 
 ### Fixed

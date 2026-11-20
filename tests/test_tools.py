@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+import pytest
+import respx
 from fastmcp import Client
 
+from tests.conftest import load
 from ucsc_link.mcp.capabilities import TOOLS
 
 HTT = {"assembly": "hg38", "chrom": "chr4", "start": 3074800, "end": 3075000, "track": "rmsk"}
@@ -82,6 +86,31 @@ async def test_search_next_step_uses_refseq_select_to_reveal_strand(
     step = out["_meta"]["next_commands"][0]
     assert step["tool"] == "get_region_annotations"
     assert step["arguments"]["track"] == "ncbiRefSeqSelect"
+
+
+@pytest.mark.parametrize(
+    ("fixture", "query", "tool", "track"),
+    [
+        ("search_hg38_rp11_173h9_2", "RP11-173H9.2", "get_region_annotations", "knownGene"),
+        ("search_hg38_loc124909477", "LOC124909477", "list_tracks", None),
+    ],
+)
+async def test_search_next_step_after_a_fallback_hit_is_not_a_dead_end(
+    facade: Any,
+    call_tool: Any,
+    mocked_ucsc: respx.MockRouter,
+    fixture: str,
+    query: str,
+    tool: str,
+    track: str | None,
+) -> None:
+    """RefSeq Select is empty in these windows; knownGene shows the GENCODE record only."""
+    mocked_ucsc.get("/search").mock(return_value=httpx.Response(200, json=load(fixture)))
+    out = await call_tool(facade, "search_genome", {"assembly": "hg38", "query": query})
+    assert out["results"][0]["exact"] is True and "has_cds" in out["note"]
+    steps = out["_meta"]["next_commands"]
+    assert [s["tool"] for s in steps] == [tool]
+    assert steps[0]["arguments"].get("track") == track
 
 
 async def test_reference_sequence_tool(facade: Any, call_tool: Any) -> None:

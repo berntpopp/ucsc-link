@@ -1,0 +1,117 @@
+{
+ "downloadTime": "2026:11:20T15:49:32Z",
+ "downloadTimeStamp": 1795189772,
+ "genome": "hg38",
+ "positionMatches": [
+  {
+   "name": "ncbiRefSeqPredicted",
+   "trackName": "ncbiRefSeqPredicted",
+   "description": "NCBI RefSeq genes, predicted subset (XM_* or XR_*)",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr17:42423315-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_934762.3",
+     "posName": "XR_934762.3",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:42423315-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_002958124.2",
+     "posName": "XR_002958124.2",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:42423315-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_001752890.3",
+     "posName": "XR_001752890.3",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:42423315-42427534",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_934764.4",
+     "posName": "XR_934764.4",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:42423188-42450257",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_007065758.1",
+     "posName": "XR_007065758.1",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:42423187-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_934763.2",
+     "posName": "XR_934763.2",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr17:42423315-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_001752890.3",
+     "posName": "uncharacterized LOC102725238, transcript variant X4",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_001752890.3)"
+    },
+    {
+     "position": "chr17:42423315-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_002958124.2",
+     "posName": "uncharacterized LOC102725238, transcript variant X6",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_002958124.2)"
+    },
+    {
+     "position": "chr17:42423188-42450257",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_007065758.1",
+     "posName": "uncharacterized LOC102725238, transcript variant X2",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_007065758.1)"
+    },
+    {
+     "position": "chr17:42423315-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_934762.3",
+     "posName": "uncharacterized LOC102725238, transcript variant X3",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_934762.3)"
+    },
+    {
+     "position": "chr17:42423187-42441050",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_934763.2",
+     "posName": "uncharacterized LOC102725238, transcript variant X5",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_934763.2)"
+    },
+    {
+     "position": "chr17:42423315-42427534",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_934764.4",
+     "posName": "uncharacterized LOC102725238, transcript variant X1",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_934764.4)"
+    }
+   ]
+  }
+ ]
+}
