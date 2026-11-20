@@ -10,7 +10,7 @@ import respx
 
 from tests.conftest import load
 from ucsc_link.exceptions import InvalidInputError, NotFoundError, UpstreamSchemaError
-from ucsc_link.service import UcscService
+from ucsc_link.service import SEARCH_TRACKS, UcscService
 from ucsc_link.tracks import MAX_RESPONSE_CHARS
 
 
@@ -244,3 +244,53 @@ async def test_mane_bigbed_blocks_become_strand_aware_exons(ucsc_service: UcscSe
     assert exons[0] == {"exon": 1, "start": 43125270, "end": 43125364}
     assert exons[-1] == {"exon": 23, "start": 43044294, "end": 43045802}
     assert "reserved" not in record  # display colour dropped
+
+
+@pytest.mark.parametrize(
+    ("fixture", "query", "track", "chrom", "transcripts"),
+    [
+        ("search_hg38_loc124909477", "LOC124909477", "ncbiRefSeqPredicted", "chr3", 1),
+        ("search_hg38_rp11_173h9_2", "rp11-173h9.2", "wgEncodeGencodeBasicV38", "chr2", 1),
+    ],
+)
+async def test_search_finds_loc_ids_and_clone_names_on_fallback_tracks(
+    ucsc_service: UcscService,
+    mocked_ucsc: respx.MockRouter,
+    fixture: str,
+    query: str,
+    track: str,
+    chrom: str,
+    transcripts: int,
+) -> None:
+    """router #351: names the curated tracks lack are found, with gene and CDS presence."""
+    mocked_ucsc.get("/search").mock(return_value=httpx.Response(200, json=load(fixture)))
+    out = await ucsc_service.search_genome("hg38", query, 5)
+    assert out["exact_matches"] == out["total"] == 1 and "note" not in out
+    hit = out["results"][0]
+    assert (hit["track"], hit["chrom"], hit["exact"]) == (track, chrom, True)
+    assert hit["gene"].upper() == query.upper() and hit["strand"] in ("+", "-")
+    assert (hit["transcripts"], hit["has_cds"]) == (transcripts, False)
+    assert out["searched_tracks"][:5] == list(SEARCH_TRACKS) and track in out["searched_tracks"]
+
+
+async def test_search_keeps_curated_hits_first_without_extra_upstream_calls(
+    ucsc_service: UcscService, mocked_ucsc: respx.MockRouter
+) -> None:
+    """A fallback-track hit never outranks an equally exact curated one, nor costs a call."""
+    data = load("search_hg38_brca1")
+    extra = {"position": "chr17:43044295-43125364", "hgFindMatches": "XM_1.1", "posName": "BRCA1"}
+    data["positionMatches"].insert(0, {"trackName": "ncbiRefSeqPredicted", "matches": [extra]})
+    mocked_ucsc.get("/search").mock(return_value=httpx.Response(200, json=data))
+    out = await ucsc_service.search_genome("hg38", "BRCA1", 50)
+    exact = [r["track"] for r in out["results"] if r["exact"]]
+    assert exact[0] == "mane" and exact[-1] == "ncbiRefSeqPredicted"
+    assert not any(call.request.url.path == "/getData/track" for call in mocked_ucsc.calls)
+
+
+async def test_search_absence_names_the_searched_tracks(
+    ucsc_service: UcscService, mocked_ucsc: respx.MockRouter
+) -> None:
+    mocked_ucsc.get("/search").mock(return_value=httpx.Response(200, json={"genome": "hg19"}))
+    out = await ucsc_service.search_genome("hg19", "RP11-0X0.0", 5)
+    assert out["total"] == 0 and out["results"] == [] and "note" in out
+    assert out["searched_tracks"] == [*SEARCH_TRACKS, "wgEncodeGencodeBasicV38lift37"]

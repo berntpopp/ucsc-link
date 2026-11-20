@@ -1,0 +1,33 @@
+{
+ "downloadTime": "2026:11:20T15:36:24Z",
+ "downloadTimeStamp": 1795188984,
+ "genome": "hg38",
+ "dataTime": "2025-08-13T08:30:42",
+ "dataTimeStamp": 1755099042,
+ "trackType": "genePred",
+ "track": "ncbiRefSeqPredicted",
+ "start": 195696544,
+ "end": 195699070,
+ "chrom": "chr3",
+ "ncbiRefSeqPredicted": [
+  {
+   "bin": 2078,
+   "name": "XR_007096227.1",
+   "chrom": "chr3",
+   "strand": "+",
+   "txStart": 195696544,
+   "txEnd": 195699070,
+   "cdsStart": 195699070,
+   "cdsEnd": 195699070,
+   "exonCount": 2,
+   "exonStarts": "195696544,195699029,",
+   "exonEnds": "195696589,195699070,",
+   "score": 0,
+   "name2": "LOC124909477",
+   "cdsStartStat": "none",
+   "cdsEndStat": "none",
+   "exonFrames": "-1,-1,"
+  }
+ ],
+ "itemsReturned": 1
+}

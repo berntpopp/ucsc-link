@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-20
+
+### Added
+
+- `search_genome` also reads UCSC's matches on fallback gene tracks, after the curated ones:
+  `ncbiRefSeqPredicted` (hg38; NCBI `LOC…` ids such as `LOC124909477`) and GENCODE V38 Basic
+  (`wgEncodeGencodeBasicV38` on hg38, `wgEncodeGencodeBasicV38lift37` on hg19; legacy
+  clone-based names such as `RP11-173H9.2`). UCSC already returned these matches; the
+  curated-track filter dropped them, so the search answered with an empty result
+  (genefoundry-router#351).
+- When no curated track knows the name, a fallback hit that names the query gains `gene`,
+  `strand`, `transcripts` and `has_cds` from its own track (at most two extra upstream calls
+  per search), so a caller can tell a non-coding record from a coding one. `searched_tracks`
+  lists the fallback tracks of the assembly; `get_server_capabilities` lists them as
+  `fallback_search_tracks`. Tool names, descriptions and input schemas are unchanged.
+
 ## [0.5.1] - 2026-11-19
 
 ### Fixed

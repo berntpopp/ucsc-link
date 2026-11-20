@@ -25,7 +25,7 @@ from ucsc_link.blat import (
 from ucsc_link.buildinfo import build_info
 from ucsc_link.config import settings
 from ucsc_link.mcp.resources import RATE_LIMIT_POLICY, RESEARCH_USE_NOTICE
-from ucsc_link.service import SEARCH_TRACKS, track_summary
+from ucsc_link.service import EXTRA_SEARCH_TRACKS, SEARCH_TRACKS, track_summary
 from ucsc_link.tracks import (
     ASSEMBLY_ALIASES,
     DEFAULT_LIMIT,
@@ -83,6 +83,7 @@ def build_capabilities() -> dict[str, Any]:
         },
         "tracks": [track_summary(spec) for spec in TRACKS.values()],
         "search_tracks": list(SEARCH_TRACKS),
+        "fallback_search_tracks": {k: list(v) for k, v in EXTRA_SEARCH_TRACKS.items()},
         "limits": {
             "max_feature_window_bp": MAX_FEATURE_WINDOW_BP,
             "max_signal_window_bp": MAX_SIGNAL_WINDOW_BP,

@@ -50,6 +50,8 @@ def _track_route(request: httpx.Request) -> httpx.Response:
         ("hg38", "cCREregistry"): "track_hg38_cCREregistry_shh",
         ("hg38", "ncbiRefSeqSelect"): "track_hg38_ncbiRefSeqSelect_brca1",
         ("hg38", "mane"): "track_hg38_mane_brca1",
+        ("hg38", "ncbiRefSeqPredicted"): "track_hg38_ncbiRefSeqPredicted_loc124909477",
+        ("hg38", "wgEncodeGencodeBasicV38"): "track_hg38_wgEncodeGencodeBasicV38_rp11_173h9_2",
     }
     name = table.get(key)
     if name is None:

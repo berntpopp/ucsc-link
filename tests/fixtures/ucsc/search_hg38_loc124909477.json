@@ -1,0 +1,32 @@
+{
+ "downloadTime": "2026:11:20T15:36:01Z",
+ "downloadTimeStamp": 1795188961,
+ "genome": "hg38",
+ "positionMatches": [
+  {
+   "name": "ncbiRefSeqPredicted",
+   "trackName": "ncbiRefSeqPredicted",
+   "description": "NCBI RefSeq genes, predicted subset (XM_* or XR_*)",
+   "vis": "pack",
+   "matches": [
+    {
+     "position": "chr3:195696545-195699070",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_007096227.1",
+     "posName": "XR_007096227.1",
+     "highlight": null,
+     "canonical": false
+    },
+    {
+     "position": "chr3:195696545-195699070",
+     "extraSel": "ncbiRefSeqPredicted_sel=1&refSeqComposite_sel=1&",
+     "hgFindMatches": "XR_007096227.1",
+     "posName": "uncharacterized LOC124909477",
+     "highlight": null,
+     "canonical": false,
+     "description": "(XR_007096227.1)"
+    }
+   ]
+  }
+ ]
+}
