@@ -41,6 +41,8 @@ def fast_settings() -> UcscSettings:
 def _track_route(request: httpx.Request) -> httpx.Response:
     params = dict(request.url.params)
     key = (params.get("genome"), params.get("track"))
+    if key == ("hg38", "ncbiRefSeqPredicted") and params.get("chrom") == "chr17":
+        return httpx.Response(200, json=load("track_hg38_ncbiRefSeqPredicted_loc102725238"))
     table = {
         ("hg38", "rmsk"): "track_hg38_rmsk_htt",
         ("hg38", "genomicSuperDups"): "track_hg38_genomicSuperDups_gba",

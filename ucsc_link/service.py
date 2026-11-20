@@ -18,7 +18,13 @@ from urllib.parse import unquote
 from ucsc_link.api.client import UcscClient
 from ucsc_link.blat import BlatService
 from ucsc_link.config import BlatSettings
-from ucsc_link.exceptions import InvalidInputError, NotFoundError, UpstreamSchemaError
+from ucsc_link.exceptions import (
+    InvalidInputError,
+    NotFoundError,
+    RateLimitedError,
+    UpstreamSchemaError,
+    UpstreamUnavailableError,
+)
 from ucsc_link.mcp.untrusted_content import DEFAULT_MAX_OBJECTS as MAX_UNTRUSTED_OBJECTS
 from ucsc_link.mcp.untrusted_content import fence_untrusted_text
 from ucsc_link.tracks import (
@@ -52,6 +58,17 @@ EXTRA_SEARCH_TRACKS: dict[str, tuple[str, ...]] = {
 }
 #: Upstream calls spent per search on gene details of fallback-track hits.
 MAX_DETAIL_CALLS = 2
+#: Region track that shows the same record as a fallback-track hit (checked live
+#: 2026-11-20); predicted RefSeq has none on the allowlist.
+FALLBACK_REGION_TRACK = {
+    "wgEncodeGencodeBasicV38": "knownGene",
+    "wgEncodeGencodeBasicV38lift37": "knownGene",
+}
+_WORD = re.compile(r"[\w.\-]+")
+HAS_CDS_NOTE = (
+    "`has_cds` describes this track's transcripts of the gene inside the hit only; it is "
+    "not a gene biotype."
+)
 
 
 def _now() -> str:
@@ -326,7 +343,7 @@ class UcscService:
         if not term:
             raise InvalidInputError("query must be a non-empty gene symbol or term.", field="query")
         data = await self.client.get_json("/search", {"search": term, "genome": db})
-        tracks = (*SEARCH_TRACKS, *EXTRA_SEARCH_TRACKS[db])
+        tracks = (*SEARCH_TRACKS, *EXTRA_SEARCH_TRACKS.get(db, ()))
         exact: set[int] = set()
         wanted = term.upper()
         seen: dict[tuple[str, str, int, int], dict[str, Any]] = {}
@@ -346,14 +363,17 @@ class UcscService:
                     hit_id = str(hit.get("id", "")).upper()
                     if wanted in {label.split(" (")[0], hit_id, hit_id.split(".")[0]}:
                         exact.add(id(hit))
-                # UCSC repeats an item once per matching name ("uncharacterized LOC...").
-                if track not in SEARCH_TRACKS and (id(first) in exact or wanted in label.split()):
+                # UCSC repeats an item once per matching name ("uncharacterized LOC..., ...").
+                if track not in SEARCH_TRACKS and (
+                    id(first) in exact or wanted in _WORD.findall(label)
+                ):
                     named[id(first)] = first
         if exact <= named.keys():  # the curated tracks do not know the name
-            for hit in list(named.values())[:MAX_DETAIL_CALLS]:
-                if await self._add_gene_detail(db, hit, wanted):
-                    exact.add(id(hit))
-        hits = list(seen.values())
+            exact |= await self._add_gene_details(db, list(named.values()), wanted)
+            hits = list(seen.values())
+        else:  # a curated track answers: fallback hits would only repeat its isoforms
+            hits = [h for h in seen.values() if h["track"] in SEARCH_TRACKS]
+            exact.difference_update(named)
         # Exact symbol/accession hits first, then UCSC's looser text matches.
         hits.sort(key=lambda h: (id(h) not in exact, tracks.index(h["track"])))
         results = hits[:limit]
@@ -367,6 +387,8 @@ class UcscService:
                 "text matches on gene descriptions and are weak candidates. For a disease or "
                 "phenotype name resolve the disease first; for a gene, check the symbol."
             )
+        if any("has_cds" in hit for hit in results):
+            payload["note"] = " ".join(filter(None, (payload.get("note"), HAS_CDS_NOTE)))
         payload.update(
             results=results,
             exact_matches=len(exact),
@@ -379,35 +401,56 @@ class UcscService:
         )
         return payload
 
-    async def _add_gene_detail(self, assembly: str, hit: dict[str, Any], wanted: str) -> bool:
-        """Add gene, strand and CDS presence from the hit's own genePred track.
+    async def _add_gene_details(
+        self, assembly: str, named: list[dict[str, Any]], wanted: str
+    ) -> set[int]:
+        """Add gene, strand and CDS presence to fallback hits from their own genePred track.
 
-        Returns whether that gene is the query. ``has_cds`` covers the gene's transcripts
-        of this track inside the hit: false means the track annotates it as non-coding.
+        One call covers every hit of the same gene in its window. Returns the ids of the
+        hits whose gene is the query; if UCSC fails here the search still stands, and a
+        hit whose label names the query stays exact without details.
         """
-        track = hit["track"]
-        params = {"genome": assembly, "track": track, "chrom": hit["chrom"]}
-        data = await self.client.get_json(
-            "/getData/track", {**params, "start": hit["start"], "end": hit["end"]}
-        )
-        rows = data.get(track)
-        if not isinstance(rows, list):
-            raise UpstreamSchemaError("UCSC track payload was malformed.", field=track)
-        rows = [r for r in rows if isinstance(r, dict) and _SAFE_ID.match(str(r.get("name2")))]
-        own = next(
-            (r for r in rows if r.get("name") == hit.get("id", "") or r["name2"].upper() == wanted),
-            None,
-        )
-        if own is None:
-            return False
-        same = [r for r in rows if r["name2"] == own["name2"]]
-        hit.update(gene=own["name2"], transcripts=len(same))
-        cds = [(r.get("cdsStart"), r.get("cdsEnd")) for r in same]
-        if all(isinstance(s, int) and isinstance(e, int) for s, e in cds):
-            hit["has_cds"] = any(e > s for s, e in cds)
-        if own.get("strand") in ("+", "-"):
-            hit["strand"] = own["strand"]
-        return bool(own["name2"].upper() == wanted)
+        exact: set[int] = set()
+        seen: set[int] = set()
+        for _ in range(MAX_DETAIL_CALLS):
+            hit = next((h for h in named if id(h) not in seen), None)
+            if hit is None:
+                break
+            seen.add(id(hit))
+            params = {"genome": assembly, "track": hit["track"], "chrom": hit["chrom"]}
+            try:
+                data = await self.client.get_json(
+                    "/getData/track", {**params, "start": hit["start"], "end": hit["end"]}
+                )
+            except RateLimitedError, UpstreamUnavailableError:
+                return exact | {id(h) for h in named if "gene" not in h}
+            rows = data.get(hit["track"])
+            rows = [
+                r
+                for r in (rows if isinstance(rows, list) else [])
+                if isinstance(r, dict) and _SAFE_ID.match(str(r.get("name2")))
+            ]
+            own = next(
+                (r for r in rows if hit.get("id") in (r.get("name"), r["name2"])),
+                None,
+            )
+            if own is None:
+                continue
+            same = {r.get("name"): r for r in rows if r["name2"] == own["name2"]}
+            cds = [(r.get("cdsStart"), r.get("cdsEnd")) for r in same.values()]
+            for other in named:
+                row = same.get(other.get("id"), own if other is hit else None)
+                if row is None or other["track"] != hit["track"]:
+                    continue
+                seen.add(id(other))
+                other.update(gene=own["name2"], transcripts=len(same))
+                if all(isinstance(s, int) and isinstance(e, int) for s, e in cds):
+                    other["has_cds"] = any(e > s for s, e in cds)
+                if row.get("strand") in ("+", "-"):
+                    other["strand"] = row["strand"]
+                if own["name2"].upper() == wanted:
+                    exact.add(id(other))
+        return exact
 
     @staticmethod
     def _search_hit(assembly: str, track: str, match: Any) -> dict[str, Any] | None:

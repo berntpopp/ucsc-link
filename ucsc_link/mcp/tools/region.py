@@ -10,6 +10,7 @@ from ucsc_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 from ucsc_link.mcp.envelope import McpErrorContext, ToolReturn, run_mcp_tool
 from ucsc_link.mcp.next_commands import cmd
 from ucsc_link.mcp.service_adapters import get_ucsc_service
+from ucsc_link.service import FALLBACK_REGION_TRACK, SEARCH_TRACKS
 from ucsc_link.tracks import (
     DEFAULT_LIMIT,
     DEFAULT_SEARCH_LIMIT,
@@ -77,6 +78,12 @@ End = Annotated[
         examples=[3075000],
     ),
 ]
+
+
+def _region_track(search_track: str) -> str | None:
+    """The allowlisted track that shows a search hit's record in its window, if any."""
+    default = "ncbiRefSeqSelect" if search_track in SEARCH_TRACKS else None
+    return FALLBACK_REGION_TRACK.get(search_track, default)
 
 
 def _region_next(args: dict[str, Any], payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -188,10 +195,13 @@ def register_region_tools(mcp: FastMCP) -> None:
                     chrom=hit["chrom"],
                     start=hit["start"],
                     end=hit["end"],
-                    track="ncbiRefSeqSelect",
+                    track=track,
                 )
                 for hit in payload["results"][:1]
-                if hit["end"] - hit["start"] <= MAX_FEATURE_WINDOW_BP
+                # A fallback-track hit is absent from RefSeq Select: name the track that
+                # shows it, or no region step at all.
+                if (track := _region_track(hit["track"]))
+                and hit["end"] - hit["start"] <= MAX_FEATURE_WINDOW_BP
             ]
             if not payload["exact_matches"]:  # weak or no hits: route to the fleet resolvers
                 steps = [

@@ -10,7 +10,7 @@ import respx
 
 from tests.conftest import load
 from ucsc_link.exceptions import InvalidInputError, NotFoundError, UpstreamSchemaError
-from ucsc_link.service import SEARCH_TRACKS, UcscService
+from ucsc_link.service import HAS_CDS_NOTE, SEARCH_TRACKS, UcscService
 from ucsc_link.tracks import MAX_RESPONSE_CHARS
 
 
@@ -265,7 +265,8 @@ async def test_search_finds_loc_ids_and_clone_names_on_fallback_tracks(
     """router #351: names the curated tracks lack are found, with gene and CDS presence."""
     mocked_ucsc.get("/search").mock(return_value=httpx.Response(200, json=load(fixture)))
     out = await ucsc_service.search_genome("hg38", query, 5)
-    assert out["exact_matches"] == out["total"] == 1 and "note" not in out
+    assert out["exact_matches"] == out["total"] == 1
+    assert out["note"] == HAS_CDS_NOTE  # the field's meaning travels with it, no weak-hit note
     hit = out["results"][0]
     assert (hit["track"], hit["chrom"], hit["exact"]) == (track, chrom, True)
     assert hit["gene"].upper() == query.upper() and hit["strand"] in ("+", "-")
@@ -273,18 +274,57 @@ async def test_search_finds_loc_ids_and_clone_names_on_fallback_tracks(
     assert out["searched_tracks"][:5] == list(SEARCH_TRACKS) and track in out["searched_tracks"]
 
 
-async def test_search_keeps_curated_hits_first_without_extra_upstream_calls(
+async def test_search_drops_fallback_hits_when_a_curated_track_answers(
     ucsc_service: UcscService, mocked_ucsc: respx.MockRouter
 ) -> None:
-    """A fallback-track hit never outranks an equally exact curated one, nor costs a call."""
+    """A gene the curated tracks know gets the same rows and counts as without fallbacks."""
+    plain = await ucsc_service.search_genome("hg38", "brca1", 50)  # other case: no cache hit
     data = load("search_hg38_brca1")
     extra = {"position": "chr17:43044295-43125364", "hgFindMatches": "XM_1.1", "posName": "BRCA1"}
-    data["positionMatches"].insert(0, {"trackName": "ncbiRefSeqPredicted", "matches": [extra]})
+    for track in ("ncbiRefSeqPredicted", "wgEncodeGencodeBasicV38"):
+        data["positionMatches"].insert(0, {"trackName": track, "matches": [extra]})
     mocked_ucsc.get("/search").mock(return_value=httpx.Response(200, json=data))
     out = await ucsc_service.search_genome("hg38", "BRCA1", 50)
-    exact = [r["track"] for r in out["results"] if r["exact"]]
-    assert exact[0] == "mane" and exact[-1] == "ncbiRefSeqPredicted"
+    rows = [
+        [(h["track"], h.get("id"), h["start"], h["exact"]) for h in o["results"]]
+        for o in (out, plain)
+    ]
+    assert rows[0] == rows[1]
+    for key in ("total", "exact_matches", "returned"):
+        assert out[key] == plain[key]
+    assert "note" not in out
     assert not any(call.request.url.path == "/getData/track" for call in mocked_ucsc.calls)
+
+
+async def test_search_marks_every_transcript_variant_of_a_loc_gene_exact(
+    ucsc_service: UcscService, mocked_ucsc: respx.MockRouter
+) -> None:
+    """Labels read "uncharacterized LOC102725238, transcript variant X4" (note the comma)."""
+    mocked_ucsc.get("/search").mock(
+        return_value=httpx.Response(200, json=load("search_hg38_loc102725238"))
+    )
+    out = await ucsc_service.search_genome("hg38", "LOC102725238", 50)
+    assert out["exact_matches"] == out["total"] == 6
+    assert all(
+        (h["exact"], h["gene"], h["transcripts"], h["has_cds"], h["strand"])
+        == (True, "LOC102725238", 6, False, "+")
+        for h in out["results"]
+    )
+    track_calls = [c for c in mocked_ucsc.calls if c.request.url.path == "/getData/track"]
+    assert len(track_calls) == 1
+
+
+async def test_search_survives_a_failed_detail_call(
+    ucsc_service: UcscService, mocked_ucsc: respx.MockRouter
+) -> None:
+    mocked_ucsc.get("/search").mock(
+        return_value=httpx.Response(200, json=load("search_hg38_loc124909477"))
+    )
+    mocked_ucsc.get("/getData/track").mock(return_value=httpx.Response(503))
+    out = await ucsc_service.search_genome("hg38", "LOC124909477", 5)
+    hit = out["results"][0]
+    assert (out["total"], hit["chrom"], hit["exact"]) == (1, "chr3", True)
+    assert "gene" not in hit and "has_cds" not in hit and "note" not in out
 
 
 async def test_search_absence_names_the_searched_tracks(
