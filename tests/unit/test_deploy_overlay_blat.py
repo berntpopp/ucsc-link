@@ -74,3 +74,14 @@ def test_image_prepares_the_volume_mount_point_for_the_app_user() -> None:
     # gfServer's working_dir: if absent from the fresh volume, Docker creates it root-owned
     # and ucsc-blat-fetch (uid 10001) cannot write hg38.2bit into it.
     assert "install -d -o app -g app -m 0755 /opt/blat /opt/blat/hg38" in text
+
+
+def test_overlay_follows_the_deploy_contract_shapes() -> None:
+    # DEPLOY-CONTRACT-STANDARD-v1 C3/C5/C6 as router validate-deployed-overlay gates them.
+    compose = _load_compose(ROOT / "docker" / "docker-compose.npm.yml")
+    # Unnamed, Compose prefixes the project name: a project rename starts gfServer empty.
+    assert compose["volumes"]["ucsc-blat"] == {"name": "ucsc-blat-hg38-kent-v479-r2"}
+    assert IMAGE.startswith("${GF_IMAGE:-${UCSC_LINK_IMAGE:?")
+    assert {s["image"] for s in NPM.values()} == {IMAGE}
+    ipam = compose["networks"]["ucsc_link_internal_net"]["ipam"]
+    assert ipam == {"config": [{"subnet": "${GF_INTERNAL_SUBNET:-10.251.12.0/28}"}]}

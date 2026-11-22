@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-22
+
+### Fixed
+
+- Deploy: `docker/docker-compose.npm.yml` now passes the router's `validate-deployed-overlay`
+  (Deploy-Contract Standard v1, #12): the `ucsc-blat` volume declares its production name
+  `ucsc-blat-hg38-kent-v479-r2` (C5), so a Compose project rename can no longer start gfServer
+  on an empty volume; every service reads `${GF_IMAGE:-${UCSC_LINK_IMAGE:?...}}` (C3; `UCSC_LINK_IMAGE`
+  stays required: Compose resolves the nested `:?` even when `GF_IMAGE` is set); `ucsc_link_internal_net` declares the registry subnet
+  `${GF_INTERNAL_SUBNET:-10.251.12.0/28}` (C6).
+
 ## [0.6.1] - 2026-11-22
 
 ### Fixed
