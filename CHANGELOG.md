@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-11-22
+
+### Fixed
+
+- Release: both reusable-workflow pins move from genefoundry-router v0.10.17 to v0.13.17,
+  whose `validate-deployed-overlay` accepts the Deploy-Contract C3 `GF_IMAGE` form adopted in
+  0.6.2. The v0.10.17 gate rejected it, so 0.6.2 was tagged but never released (#14).
+
 ## [0.6.2] - 2026-11-22
 
 ### Fixed
