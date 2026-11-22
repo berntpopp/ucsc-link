@@ -148,7 +148,8 @@ value in `ucsc_link/blat_fetch.py` (`1f67aaa1...acec0`); `md5sum` must print UCS
 
 The fleet controller (`strato_v6_docker_npm`) needs an adapter entry for this stack before
 it can deploy it: application service `ucsc_link`, init service `ucsc-blat-fetch`, logical
-volume `ucsc-blat`. The router's `validate-deployed-overlay` gate already passes.
+volume `ucsc-blat` (production name `ucsc-blat-hg38-kent-v479-r2`). The router's
+`validate-deployed-overlay` gate passes.
 
 ### Input contract
 
