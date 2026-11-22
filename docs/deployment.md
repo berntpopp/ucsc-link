@@ -146,10 +146,9 @@ To verify the volume by hand: `sha256sum /opt/blat/hg38/hg38.2bit` must print th
 value in `ucsc_link/blat_fetch.py` (`1f67aaa1...acec0`); `md5sum` must print UCSC's
 `dcc3ea27079aa6dc3f9deccd7275e0f8`.
 
-The fleet controller (`strato_v6_docker_npm`) needs an adapter entry for this stack before
-it can deploy it: application service `ucsc_link`, init service `ucsc-blat-fetch`, logical
-volume `ucsc-blat` (production name `ucsc-blat-hg38-kent-v479-r2`). The router's
-`validate-deployed-overlay` gate passes.
+The fleet controller (`strato_v6_docker_npm`) deploys this stack: application service
+`ucsc_link`, init service `ucsc-blat-fetch`, logical volume `ucsc-blat` (production name
+`ucsc-blat-hg38-kent-v479-r2`). The router's `validate-deployed-overlay` gate passes.
 
 ### Input contract
 

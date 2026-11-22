@@ -22,7 +22,7 @@ name: ucsc-link-npm
 
 services:
   ucsc-blat-fetch:
-    image: ${GF_IMAGE:-${UCSC_LINK_IMAGE:?Set GF_IMAGE to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}}
+    image: ${GF_IMAGE:-${UCSC_LINK_IMAGE:?Set UCSC_LINK_IMAGE (GF_IMAGE overrides it) to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}}
     pull_policy: missing
     # Idempotent: verified files are kept, so a restart re-hashes (~5 s) instead of
     # re-downloading. Add "hg19" here (and a gfserver-hg19 service) to serve hg19.
@@ -54,7 +54,7 @@ services:
         max-file: "3"
 
   ucsc-gfserver-hg38:
-    image: ${GF_IMAGE:-${UCSC_LINK_IMAGE:?Set GF_IMAGE to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}}
+    image: ${GF_IMAGE:-${UCSC_LINK_IMAGE:?Set UCSC_LINK_IMAGE (GF_IMAGE overrides it) to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}}
     pull_policy: missing
     depends_on:
       ucsc-blat-fetch:
@@ -109,7 +109,7 @@ services:
   ucsc_link:
     # Deploy pulls the released, attested image; it never builds from source.
     # Pin a digest, not a tag: there is no `latest`, and only a digest is immutable.
-    image: ${GF_IMAGE:-${UCSC_LINK_IMAGE:?Set GF_IMAGE to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}}
+    image: ${GF_IMAGE:-${UCSC_LINK_IMAGE:?Set UCSC_LINK_IMAGE (GF_IMAGE overrides it) to ghcr.io/berntpopp/ucsc-link@sha256:<digest>}}
     pull_policy: missing
     container_name: ucsc-link-npm
     # NO published host ports — NPM handles all routing via the container name.
