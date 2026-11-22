@@ -110,7 +110,7 @@ chr4:3,074,847-3,075,093. A second server would cost another ~2.5 GB for no gain
 
 | Item | Value |
 |------|-------|
-| `gfServer` resident memory | 2.24 GB steady, 2.53 GB peak (compose limit `UCSC_GFSERVER_MEMORY_LIMIT`, default `3g`) |
+| `gfServer` resident memory | 2.24 GB steady, 2.53 GB peak (compose limit `UCSC_GFSERVER_MEMORY_LIMIT`, default `3g`; swap is disabled for it) |
 | `gfServer` start to ready | about 70 s on a workstation SSD (healthcheck `start_period: 300s`) |
 | Volume disk | `hg38.2bit` 835,393,456 B plus three binaries about 22 MB, so about 0.86 GB (hg19 adds 816,241,703 B) |
 | First-run download | about 1 min at ~14 MB/s; one file at a time |

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-22
+
+### Fixed
+
+- Deploy: `ucsc-gfserver-hg38` sets `memswap_limit` equal to its memory limit, so the
+  hg38 index can no longer be swapped out (production had 1.8 GiB of it in swap; BLAT and
+  isPcr paged it back in from disk). The 3 GB limit already covers the measured 2.53 GB
+  peak (#10).
+
 ## [0.6.0] - 2026-11-20
 
 ### Added

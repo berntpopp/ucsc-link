@@ -48,7 +48,9 @@ def test_gfserver_is_internal_hardened_and_reads_the_volume_only() -> None:
     assert server["read_only"] is True and server["cap_drop"] == ["ALL"]
     assert server["security_opt"] == ["no-new-privileges:true"]
     assert server["healthcheck"]["test"][1] == "/opt/blat/bin/gfServer"
-    assert server["deploy"]["resources"]["limits"]["memory"]
+    limit = server["deploy"]["resources"]["limits"]["memory"]
+    # No swap on top of the limit: the kernel would page the cold index out (#10).
+    assert limit and server["memswap_limit"] == limit
 
 
 def test_app_reads_the_volume_and_does_not_wait_for_blat() -> None:
