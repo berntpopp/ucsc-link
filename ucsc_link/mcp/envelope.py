@@ -359,6 +359,14 @@ async def run_mcp_tool(
             meta = {**existing_meta, **_new_meta(tool_name), "elapsed_ms": elapsed}
             if success:
                 _stamp_provenance(result, meta, min(fetch_times, default=started_at))
+                if isinstance(result.get("truncated"), bool) and "returned" in result:
+                    # Response-Envelope v1 section 5. These tools page by `limit` only:
+                    # there is no cursor, a wider `limit` (or a narrower region) gets the rest.
+                    meta["pagination"] = {
+                        "total_count": result.get("total"),
+                        "has_more": result["truncated"],
+                        "next_cursor": None,
+                    }
                 if not {"result", "results"} & result.keys():
                     result = {"result": result}  # v1 frame: a single record sits under `result`
             result = {"success": success, **result}
