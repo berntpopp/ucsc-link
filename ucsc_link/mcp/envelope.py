@@ -8,7 +8,7 @@ message.
 Every ``_meta`` (success AND error) carries ``tool``, ``request_id``, ``elapsed_ms``,
 ``source = "ucsc"``, ``capabilities_version``, ``next_commands`` and
 ``unsafe_for_clinical_use = True`` (the fleet-standard research-use disclaimer).
-Data provenance (track data time, retrieval time, attribution) is in the payload.
+A success also carries ``data_version`` and ``retrieved_at`` (Response-Envelope v1.2).
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from fastmcp.tools import ToolResult
@@ -27,6 +28,7 @@ from ucsc_link.exceptions import UcscError
 from ucsc_link.mcp import metrics
 from ucsc_link.mcp._sanitize import sanitize_message
 from ucsc_link.mcp.next_commands import cmd, default_error_next_commands
+from ucsc_link.provenance import with_fetch_times
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +322,18 @@ def _stamp_capabilities_version(meta: dict[str, Any]) -> None:
         meta["capabilities_version"] = version
 
 
+def _stamp_provenance(result: dict[str, Any], meta: dict[str, Any], fetched_at: float) -> None:
+    """Response-Envelope v1.2: the data release and the time of the oldest upstream fetch.
+
+    UCSC reports a track's ``dataTime``; where it reports none the data is ``live``. A
+    result built without any fetch (the track allowlist) dates to the call.
+    """
+    meta["data_version"] = meta.get("data_version") or result.get("data_time") or "live"
+    meta["retrieved_at"] = datetime.fromtimestamp(fetched_at, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if "retrieved_at" in result:  # deprecated top-level copy, removed in the next minor
+        result["retrieved_at"] = meta["retrieved_at"]
+
+
 async def run_mcp_tool(
     tool_name: str,
     call: Callable[[], Awaitable[dict[str, Any]]],
@@ -335,13 +349,19 @@ async def run_mcp_tool(
     """
     ctx = context or McpErrorContext(tool_name=tool_name)
     start = time.perf_counter()
+    started_at = time.time()
     try:
-        result = await call()
+        result, fetch_times = await with_fetch_times(call)
         elapsed = int((time.perf_counter() - start) * 1000)
         if isinstance(result, dict):
             existing_meta: dict[str, Any] = result.pop("_meta", None) or {}
-            success = bool(result.setdefault("success", True))
+            success = bool(result.pop("success", True))
             meta = {**existing_meta, **_new_meta(tool_name), "elapsed_ms": elapsed}
+            if success:
+                _stamp_provenance(result, meta, min(fetch_times, default=started_at))
+                if not {"result", "results"} & result.keys():
+                    result = {"result": result}  # v1 frame: a single record sits under `result`
+            result = {"success": success, **result}
             _stamp_capabilities_version(meta)
             result["_meta"] = meta
             metrics.record(tool_name, elapsed, ok=success)

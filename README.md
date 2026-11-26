@@ -95,7 +95,7 @@ measured hardware needs (~3 GB RAM, ~0.9 GB disk, ~70 s start) and troubleshooti
 ## Data & provenance
 
 **Source.** The official UCSC Genome Browser JSON API, `https://api.genome.ucsc.edu`. No key.
-Each response states the track's UCSC `data_time`, `retrieved_at`, the provider and terms.
+Each result names its origin in `_meta` (`source`, `data_version`, `retrieved_at`), plus the provider and terms.
 
 **Tracks and terms.** All allowlisted tracks were checked on 2026-11-13; none carries UCSC's
 `protectedData` (restricted) flag. GENCODE, RefSeq, RepeatMasker, segmental duplications,

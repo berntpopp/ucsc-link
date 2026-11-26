@@ -35,6 +35,7 @@ from ucsc_link.exceptions import (
     UpstreamSchemaError,
     UpstreamUnavailableError,
 )
+from ucsc_link.provenance import note_fetch
 from ucsc_link.ratelimit import RateLimiter
 
 USER_AGENT = f"ucsc-link/{__version__} (+https://github.com/berntpopp/ucsc-link)"
@@ -94,7 +95,8 @@ class UcscClient:
             max_redirects=MAX_REDIRECTS,
             event_hooks={"request": [guard]},
         )
-        self._cache: OrderedDict[str, tuple[float, dict[str, Any]]] = OrderedDict()
+        # key -> (expiry, JSON, Unix time of the fetch that filled the entry)
+        self._cache: OrderedDict[str, tuple[float, dict[str, Any], float]] = OrderedDict()
         self._inflight: dict[str, asyncio.Future[dict[str, Any]]] = {}
         self.upstream_requests = 0
         self.cache_hits = 0
@@ -110,10 +112,11 @@ class UcscClient:
             return None
         self._cache.move_to_end(key)
         self.cache_hits += 1
+        note_fetch(hit[2])
         return hit[1]
 
     def _cache_put(self, key: str, value: dict[str, Any]) -> None:
-        self._cache[key] = (time.monotonic() + self.settings.cache_ttl_s, value)
+        self._cache[key] = (time.monotonic() + self.settings.cache_ttl_s, value, time.time())
         while len(self._cache) > self.settings.cache_maxsize:
             self._cache.popitem(last=False)
 
@@ -128,7 +131,9 @@ class UcscClient:
         if task is None:
             task = self._inflight[key] = asyncio.ensure_future(self._fetch(path, params))
             task.add_done_callback(lambda done: self._settle(key, done))
-        return await asyncio.shield(task)
+        data = await asyncio.shield(task)
+        note_fetch(time.time())
+        return data
 
     def _settle(self, key: str, task: asyncio.Future[dict[str, Any]]) -> None:
         self._inflight.pop(key, None)

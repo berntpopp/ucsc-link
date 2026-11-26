@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-26
+
+Adopts the Response-Envelope Standard v1.2 (#18).
+
+### Added
+
+- Provenance on every successful result: `_meta.data_version` (the track's UCSC `dataTime`;
+  `live` where UCSC reports none; the assembly for the self-hosted BLAT / isPcr data) and
+  `_meta.retrieved_at` (RFC 3339 UTC time of the upstream fetch), next to `_meta.source`.
+  A cache hit keeps the time of the fetch that filled the cache entry; a result built from
+  several fetches reports the oldest; BLAT / isPcr report the download time of the `.2bit`.
+- Tests run every data tool against the recorded fixtures and validate each result against
+  the envelope JSON Schema (berntpopp/genefoundry-envelope v1.2.0, vendored with its sha256).
+
+### Changed (BREAKING)
+
+- A successful result without a `results` list now carries its record under `result`
+  (Response-Envelope Standard v1): `get_reference_sequence` (`result.sequence`),
+  `get_server_capabilities` and `get_diagnostics`. Tools that return `results` are unchanged.
+
+### Deprecated
+
+- The `retrieved_at` field in the payload. It now equals `_meta.retrieved_at` (it used to
+  be the response time, also on a cache hit) and is removed in the next minor release.
+
 ## [0.6.3] - 2026-11-22
 
 ### Fixed

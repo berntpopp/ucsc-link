@@ -118,7 +118,10 @@ def register_blat_tools(mcp: FastMCP) -> None:
 
         async def call() -> dict[str, Any]:
             payload = await get_ucsc_service().blat.blat(assembly, sequence, min_identity, limit)
-            payload["_meta"] = {"next_commands": _annotate(payload["assembly"], payload["results"])}
+            payload["_meta"] = {
+                "next_commands": _annotate(payload["assembly"], payload["results"]),
+                "data_version": payload["assembly"],  # the local .2bit is that assembly
+            }
             return payload
 
         return await run_mcp_tool(
@@ -180,7 +183,7 @@ def register_blat_tools(mcp: FastMCP) -> None:
                 steps = [
                     cmd("predict_pcr_products", **{**args, "max_product_size": MAX_PRODUCT_BP})
                 ]
-            payload["_meta"] = {"next_commands": steps}
+            payload["_meta"] = {"next_commands": steps, "data_version": payload["assembly"]}
             return payload
 
         return await run_mcp_tool(
