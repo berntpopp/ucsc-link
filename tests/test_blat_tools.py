@@ -36,11 +36,11 @@ async def test_undeployed_blat_is_an_honest_typed_error(facade: Any) -> None:
 async def test_capabilities_and_diagnostics_report_blat_availability(
     facade: Any, call_tool: Any
 ) -> None:
-    caps = await call_tool(facade, "get_server_capabilities", {})
+    caps = (await call_tool(facade, "get_server_capabilities", {}))["result"]
     assert caps["blat"]["configured_assemblies"] == []
     assert "commercial" in caps["blat"]["licence"]
     assert {"find_blat_alignments", "predict_pcr_products"} <= set(caps["tools"])
-    diag = await call_tool(facade, "get_diagnostics", {})
+    diag = (await call_tool(facade, "get_diagnostics", {}))["result"]
     assert diag["blat"] == {"configured_assemblies": [], "assemblies": {}}
 
 

@@ -119,7 +119,8 @@ async def test_reference_sequence_tool(facade: Any, call_tool: Any) -> None:
         "get_reference_sequence",
         {"assembly": "hg38", "chrom": "chr4", "start": 3074876, "end": 3074940},
     )
-    assert out["success"] is True and out["strand"] == "+" and out["length"] == 64
+    assert out["success"] is True
+    assert out["result"]["strand"] == "+" and out["result"]["length"] == 64
 
 
 async def test_search_genome_fences_prose_on_the_wire(facade: Any) -> None:
@@ -135,9 +136,9 @@ async def test_search_genome_fences_prose_on_the_wire(facade: Any) -> None:
 async def test_list_tracks_and_capabilities(facade: Any, call_tool: Any) -> None:
     tracks = await call_tool(facade, "list_tracks", {"assembly": "hg38"})
     assert tracks["success"] is True and tracks["total"] == len(tracks["results"])
-    caps = await call_tool(facade, "get_server_capabilities", {})
+    caps = (await call_tool(facade, "get_server_capabilities", {}))["result"]
     assert caps["coordinates"]["machine"].startswith("0-based half-open")
-    diag = await call_tool(facade, "get_diagnostics", {})
+    diag = (await call_tool(facade, "get_diagnostics", {}))["result"]
     assert diag["upstream"]["rate_limiter"]["daily_cap"] == 5000
 
 

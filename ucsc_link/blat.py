@@ -35,6 +35,7 @@ from typing import Any
 
 from ucsc_link.config import BlatSettings
 from ucsc_link.exceptions import InvalidInputError, UpstreamSchemaError, UpstreamUnavailableError
+from ucsc_link.provenance import note_fetch
 from ucsc_link.tracks import browser_url, display, resolve_assembly
 
 logger = logging.getLogger(__name__)
@@ -244,12 +245,14 @@ class BlatService:
 
     def _binary(self, name: str, seq_dir: Path, assembly: str) -> str:
         exe = Path(self.settings.data_dir) / "bin" / name
-        if not exe.is_file() or not (seq_dir / f"{assembly}.2bit").is_file():
+        two_bit = seq_dir / f"{assembly}.2bit"
+        if not exe.is_file() or not two_bit.is_file():
             raise UpstreamUnavailableError(
                 "BLAT data is not on disk yet (first-run download still running or failed); "
                 "retry in a few minutes or check get_diagnostics.",
                 retryable=True,
             )
+        note_fetch(two_bit.stat().st_mtime)  # the snapshot's download time
         return str(exe)
 
     async def _run(self, args: list[str], output: Path) -> str:
