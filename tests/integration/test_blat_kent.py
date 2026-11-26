@@ -144,7 +144,7 @@ async def test_tools_end_to_end(
     query = _genome()["chrA"][3000:3200]
     out = await call_tool(facade, "find_blat_alignments", {"sequence": f">q\n{query}\n"})
     assert out["success"] is True and out["results"][0]["start"] == 3000
-    diag = await call_tool(facade, "get_diagnostics", {})
+    diag = (await call_tool(facade, "get_diagnostics", {}))["result"]
     assert diag["blat"]["assemblies"]["hg38"] == {
         "data_on_disk": True,
         "server_ready": True,
