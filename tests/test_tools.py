@@ -165,3 +165,37 @@ async def test_oversized_window_error_offers_a_clamped_retry(facade: Any) -> Non
     first = res.structured_content["_meta"]["next_commands"][0]
     assert first["tool"] == "get_region_annotations"
     assert first["arguments"]["start"] == 0 and first["arguments"]["end"] == 2_000_000
+
+
+async def test_search_ncbi_gene_id_is_invalid_input_naming_the_converter(
+    facade: Any, mocked_ucsc: respx.MockRouter
+) -> None:
+    """UCSC search has no NCBI Gene index; zero hits would read as "no such gene"."""
+    res = await _raw(facade, "search_genome", {"assembly": "hg38", "query": "NCBIGene:672"})
+    assert res.is_error is True
+    env = res.structured_content
+    assert env["error_code"] == "invalid_input" and env["field"] == "query"
+    assert env["allowed_values"]
+    assert env["_meta"]["next_commands"] == [
+        {"tool": "hgnc_resolve_gene_by_xref", "arguments": {"source": "entrez_id", "value": "672"}}
+    ]
+    assert not mocked_ucsc.calls
+
+
+async def test_list_tools_report_meta_pagination(facade: Any, call_tool: Any) -> None:
+    search = await call_tool(
+        facade, "search_genome", {"assembly": "hg38", "query": "BRCA1", "limit": 1}
+    )
+    assert search["_meta"]["pagination"] == {
+        "total_count": search["total"],
+        "has_more": search["truncated"],
+        "next_cursor": None,
+    }
+    region = await call_tool(facade, "get_region_annotations", HTT)
+    assert region["_meta"]["pagination"]["has_more"] is region["truncated"]
+    sequence = await call_tool(
+        facade,
+        "get_reference_sequence",
+        {"assembly": "hg38", "chrom": "chr4", "start": 3074876, "end": 3074940},
+    )
+    assert "pagination" not in sequence["_meta"]

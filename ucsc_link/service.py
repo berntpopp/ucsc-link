@@ -65,6 +65,7 @@ FALLBACK_REGION_TRACK = {
     "wgEncodeGencodeBasicV38lift37": "knownGene",
 }
 _WORD = re.compile(r"[\w.\-]+")
+_NCBI_GENE_ID = re.compile(r"(?:NCBIGene|GeneID|Entrez):(\d{1,12})", re.IGNORECASE | re.ASCII)
 HAS_CDS_NOTE = (
     "`has_cds` describes this track's transcripts of the gene inside the hit only; it is "
     "not a gene biotype."
@@ -342,6 +343,27 @@ class UcscService:
         term = query.strip()
         if not term:
             raise InvalidInputError("query must be a non-empty gene symbol or term.", field="query")
+        if ncbi := _NCBI_GENE_ID.fullmatch(term):
+            # UCSC's search has no NCBI Gene index: it would answer with zero hits, which
+            # reads as "no such gene" (Response-Envelope v1 section 2b).
+            raise InvalidInputError(
+                "query is an NCBI Gene id, which UCSC position search does not index. "
+                "UCSC was not queried.",
+                field="query",
+                allowed_values=[
+                    "gene symbol, e.g. BRCA1",
+                    "HGNC id, e.g. HGNC:1100",
+                    "Ensembl gene or transcript id, e.g. ENSG00000012048",
+                    "RefSeq accession, e.g. NM_007294.4",
+                ],
+                hint="Convert the id to its symbol with the call in _meta.next_commands.",
+                next_commands=[
+                    {
+                        "tool": "hgnc_resolve_gene_by_xref",
+                        "arguments": {"source": "entrez_id", "value": ncbi.group(1)},
+                    }
+                ],
+            )
         data = await self.client.get_json("/search", {"search": term, "genome": db})
         tracks = (*SEARCH_TRACKS, *EXTRA_SEARCH_TRACKS.get(db, ()))
         exact: set[int] = set()

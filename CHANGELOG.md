@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-26
+
+### Added
+
+- `search_genome`, `get_region_annotations` and `list_tracks` report `_meta.pagination` (Response-Envelope Standard v1 §5): `total_count` (null when the total is unknown), `has_more` and `next_cursor`. The tools page by `limit` only, so `next_cursor` is always null. The top-level `total`, `returned` and `truncated` are unchanged.
+
+### Fixed
+
+- `search_genome` no longer answers an NCBI Gene id (`NCBIGene:672`) with zero hits. UCSC position search has no NCBI Gene index, so the answer read as "no such gene". The tool now returns `invalid_input` with `field`, `allowed_values` and the converter (`hgnc_resolve_gene_by_xref`) in `_meta.next_commands` (Response-Envelope Standard v1 §2b), and does not query UCSC.
+
 ## [0.7.0] - 2026-11-26
 
 Adopts the Response-Envelope Standard v1.2 (#18).
